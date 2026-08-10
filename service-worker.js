@@ -4,7 +4,7 @@ const ARQUIVOS = [
     './',
     './index.html',
     './manifest.json',
-    './ícone.png'
+    './icone.png'
 ];
 
 
