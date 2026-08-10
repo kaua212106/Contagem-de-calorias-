@@ -1,4 +1,4 @@
-const CACHE_NAME = 'contador-de-calorias-v2';
+const CACHE_NAME = 'contador-de-calorias-v3';
 
 const ARQUIVOS = [
     './',
