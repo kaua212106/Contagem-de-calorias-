@@ -492,6 +492,12 @@ body.dark .result small,body.dark .quick-food small,body.dark .week-day small{co
 /* Assistente de refeição caseira */
 .assistant-box{background:#f7f8fc;border:1px solid #e8ebf2;border-radius:16px;padding:14px;margin-top:12px}
 .assistant-result{background:linear-gradient(180deg,#f4f6ff,#fbfcff);border:1px solid #dfe4ff;border-radius:16px;padding:15px;margin-top:12px}
+.assistant-result.attention{animation:assistantAttention .85s ease}
+@keyframes assistantAttention{
+  0%{transform:scale(.985);box-shadow:0 0 0 0 rgba(102,116,232,.32)}
+  55%{transform:scale(1);box-shadow:0 0 0 7px rgba(102,116,232,.10)}
+  100%{transform:scale(1);box-shadow:0 0 0 0 rgba(102,116,232,0)}
+}
 .assistant-kcal{font-size:30px;font-weight:850;color:var(--primary);letter-spacing:-1px}
 .assistant-range{font-size:12px;color:var(--pro-text-2);margin-top:2px}
 .assistant-macros{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:11px}
@@ -1583,6 +1589,14 @@ function assistantEstimateMeal(){
     <div class="actions"><button class="btn-neutral" id="assistantReestimateBtn" type="button">Recalcular</button><button class="btn-primary" id="assistantAddBtn" type="button">Adicionar à refeição</button></div>`;
   assistantReestimateBtn.onclick=assistantEstimateMeal;
   assistantAddBtn.onclick=assistantAddEstimate;
+
+  // Leva o usuário direto para a estimativa recém-gerada.
+  assistantResult.classList.remove("attention");
+  requestAnimationFrame(()=>{
+    assistantResult.classList.add("attention");
+    assistantResult.scrollIntoView({behavior:"smooth",block:"center",inline:"nearest"});
+    setTimeout(()=>assistantResult.classList.remove("attention"),950);
+  });
 }
 function assistantAddEstimate(){
   const e=assistantEstimate;if(!e)return;
