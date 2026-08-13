@@ -783,7 +783,7 @@ body.dark .assistant-macro b{color:#f4f6fb}
     <label>Refeição</label><select id="foodMeal"></select>
     <label>Buscar alimento, favorito, recente ou produto</label>
     <div class="search-row"><input id="foodSearch" placeholder="Ex.: arroz, banana, whey..."><button id="foodSearchBtn">⌕</button></div>
-    <div class="chip-row" style="margin-top:9px"><button class="chip" id="searchOnlineBtn">🌐 Buscar produtos online</button><button class="chip" id="barcodeBtn">📷 Código de barras</button></div>
+    <div class="chip-row" style="margin-top:9px"><button type="button" class="chip" id="searchOnlineBtn">🌐 Buscar produtos online</button><button type="button" class="chip" id="barcodeBtn">📷 Código de barras</button></div>
     <div class="results" id="foodResults"></div>
     <div id="selectedFoodBox" class="selected hidden"></div>
     <div id="foodAmountBox" class="hidden">
@@ -852,8 +852,8 @@ body.dark .assistant-macro b{color:#f4f6fb}
   <p class="note">Tenta usar a câmera ao vivo. Se o ambiente bloquear, abre a câmera nativa para tirar uma foto do código.</p>
   <div class="camera-box" id="scannerCameraBox"><video id="scannerVideo" playsinline muted></video><div class="scan-line"></div></div>
   <input id="barcodeCameraFile" type="file" accept="image/*" capture="environment" class="hidden">
-  <button class="add-btn" id="barcodeNativePhotoBtn">📸 Tirar foto do código</button>
-  <label>Código</label><div class="search-row"><input id="barcodeInput" inputmode="numeric" placeholder="789..."><button id="barcodeLookup">⌕</button></div>
+  <button type="button" class="add-btn" id="barcodeNativePhotoBtn">📸 Tirar foto do código</button>
+  <label>Código</label><div class="search-row"><input id="barcodeInput" inputmode="numeric" placeholder="789..."><button type="button" id="barcodeLookup">⌕</button></div>
   <div id="barcodeResults" class="results"></div>
 </div></div>
 
@@ -1193,7 +1193,7 @@ function switchPage(id){document.querySelectorAll(".page").forEach(p=>p.classLis
 document.querySelectorAll(".nav").forEach(n=>n.onclick=()=>switchPage(n.dataset.page));
 // Food modal
 function openFood(meal){fillMealSelects();document.getElementById("foodMeal").value=meal||state.mealNames[0];document.getElementById("assistantMeal").value=meal||state.mealNames[0];document.getElementById("manualMeal").value=meal||state.mealNames[0];selectedFood=null;document.getElementById("foodResults").innerHTML="";document.getElementById("selectedFoodBox").classList.add("hidden");document.getElementById("foodAmountBox").classList.add("hidden");document.querySelectorAll("[data-food-tab]").forEach(t=>t.classList.toggle("active",t.dataset.foodTab==="searchFoodTab"));document.getElementById("searchFoodTab").classList.remove("hidden");document.getElementById("assistantFoodTab").classList.add("hidden");document.getElementById("manualFoodTab").classList.add("hidden");openModal("foodModal")}
-function closeFoodModal(){stopNutritionLive();closeModal("foodModal")}
+function closeFoodModal(){closeModal("foodModal")}
 function searchLocal(q){q=q.toLowerCase().trim();const all=[...state.favorites.map(x=>({...x,_rank:0})),...state.recentFoods.map(x=>({...x,_rank:1})),...state.customFoods.map(x=>({...x,_rank:2})),...BASE_FOODS.map(x=>({...x,_rank:3}))];const seen=new Set();return all.filter(f=>{const k=foodKey(f);if(seen.has(k))return false;seen.add(k);return !q||f.n.toLowerCase().includes(q)||f.n.toLowerCase().split(" ").some(w=>w.startsWith(q))}).sort((a,b)=>a._rank-b._rank).slice(0,30)}
 function showFoodResults(arr){document.getElementById("foodResults").innerHTML=arr.length?arr.map((f,i)=>`<div class="result" data-food-i="${i}"><b>${isFavorite(f)?"★ ":""}${esc(f.n)}</b><small>${fmt(f.k)} kcal/100g • ${esc(f.s||"")}</small></div>`).join(""):`<div class="empty">Nenhum resultado.</div>`;document.querySelectorAll("[data-food-i]").forEach(el=>el.onclick=()=>selectFood(arr[Number(el.dataset.foodI)]))}
 function selectFood(f){selectedFood=normalizeFood(f);document.getElementById("selectedFoodBox").classList.remove("hidden");const servingLine=selectedFood.servingG>0&&selectedFood.servingK!=null?`<br><b>${fmt(selectedFood.servingK)} kcal por porção de ${fmt(selectedFood.servingG,1)} g</b>`:"";document.getElementById("selectedFoodBox").innerHTML=`<b>${esc(selectedFood.n)}</b><br><span class="note">${fmt(selectedFood.k)} kcal/100g • P ${fmt(selectedFood.p,1)} • C ${fmt(selectedFood.c,1)} • G ${fmt(selectedFood.f,1)}${servingLine}</span><button class="chip" style="margin-top:8px" id="favSelected">${isFavorite(selectedFood)?"★ Remover favorito":"☆ Favoritar"}</button>`;document.getElementById("favSelected").onclick=()=>{toggleFavorite(selectedFood);selectFood(selectedFood)};document.getElementById("foodAmountBox").classList.remove("hidden");const useServing=selectedFood.preferredMode==="serving"&&selectedFood.servingG>0;document.getElementById("portionMode").value=useServing?"serving":"g";document.getElementById("foodAmount").value=useServing?1:100;updateServingHint()}
@@ -1247,7 +1247,7 @@ function foodFromOFFProduct(p,code=""){
     s:"Open Food Facts"+(p.brands?" • "+p.brands:"")+(code||p.code?" • "+(code||p.code):"")
   };
 }
-async function searchOnline(){const q=document.getElementById("foodSearch").value.trim();if(!q)return;const cache=state.offCache[q.toLowerCase()];if(cache&&Date.now()-cache.at<7*86400000){showFoodResults(cache.items);return}const box=document.getElementById("foodResults");box.innerHTML="<div class='empty'>Buscando produtos...</div>";try{const url="https://world.openfoodfacts.org/cgi/search.pl?search_terms="+encodeURIComponent(q)+"&search_simple=1&action=process&json=1&page_size=20&fields=code,product_name,brands,nutriments,serving_quantity,serving_size,nutrition_data_per";const res=await fetch(url),data=await res.json();const items=(data.products||[]).map(p=>foodFromOFFProduct(p,p.code||"")).filter(Boolean);state.offCache[q.toLowerCase()]={at:Date.now(),items};save(false);showFoodResults(items)}catch(e){box.innerHTML="<div class='empty'>Não foi possível consultar a internet. Use a base local ou o modo manual.</div>"}}
+async function searchOnline(){const q=document.getElementById("foodSearch").value.trim();if(!q){toast("Digite o nome do produto antes de buscar online.");document.getElementById("foodSearch").focus();return;}const cache=state.offCache[q.toLowerCase()];if(cache&&Date.now()-cache.at<7*86400000){showFoodResults(cache.items);return}const box=document.getElementById("foodResults");box.innerHTML="<div class='empty'>Buscando produtos...</div>";try{const url="https://world.openfoodfacts.org/cgi/search.pl?search_terms="+encodeURIComponent(q)+"&search_simple=1&action=process&json=1&page_size=20&fields=code,product_name,brands,nutriments,serving_quantity,serving_size,nutrition_data_per";const res=await fetch(url),data=await res.json();const items=(data.products||[]).map(p=>foodFromOFFProduct(p,p.code||"")).filter(Boolean);state.offCache[q.toLowerCase()]={at:Date.now(),items};save(false);showFoodResults(items)}catch(e){box.innerHTML="<div class='empty'>Não foi possível consultar a internet. Use a base local ou o modo manual.</div>"}}
 // Barcode
 async function lookupBarcode(code){
   code=String(code||"").replace(/\D/g,"");if(!code)return;
