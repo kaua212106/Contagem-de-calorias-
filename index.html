@@ -1786,7 +1786,136 @@ readNutrition=async file=>{document.querySelectorAll("#manualFoodTab input").for
 
 // Barcode review
 let barcodeReviewFood=null;
-lookupBarcode=async function(code){code=String(code||"").replace(/\D/g,"");if(!code)return;barcodeResults.innerHTML="<div class='skeleton'></div><div class='skeleton'></div>";try{const r=await fetch("https://world.openfoodfacts.org/api/v2/product/"+encodeURIComponent(code)+".json?fields=code,product_name,brands,nutriments,serving_quantity,serving_size,nutrition_data_per,image_front_small_url"),data=await r.json(),p=data.product;if(data.status!==1||!p)return barcodeResults.innerHTML="<div class='empty'>Produto não encontrado.</div>";barcodeReviewFood=foodFromOFFProduct(p,code);if(!barcodeReviewFood)return barcodeResults.innerHTML="<div class='empty'>Produto sem calorias preenchidas.</div>";const f=barcodeReviewFood;barcodeResults.innerHTML=`<div class="selected">${p.image_front_small_url?`<img src="${esc(p.image_front_small_url)}" style="width:80px;height:80px;object-fit:contain;float:right">`:""}<b>${esc(f.n)}</b><div style="clear:both"></div><label>Porção do rótulo (g)</label><input id="brServing" type="number" step=".1" value="${f.servingG||100}"><label>Calorias por porção</label><input id="brK" type="number" step=".1" value="${f.servingK??(f.k*f.servingG/100)}"><div class="quick-grid"><div><label>Proteína/porção</label><input id="brP" type="number" step=".1" value="${f.servingP??(f.p*f.servingG/100)}"></div><div><label>Carbo/porção</label><input id="brC" type="number" step=".1" value="${f.servingC??(f.c*f.servingG/100)}"></div></div><label>Gordura/porção</label><input id="brF" type="number" step=".1" value="${f.servingF??(f.f*f.servingG/100)}"><p class="note">Confira com o rótulo. O app converte esses valores para 100 g internamente.</p><button class="btn btn-primary" id="confirmBarcodeReview">Usar produto</button></div>`;confirmBarcodeReview.onclick=()=>{const g=Number(brServing.value)||100,k=Number(brK.value)||0;barcodeReviewFood={...barcodeReviewFood,servingG:g,servingK:k,servingP:Number(brP.value)||0,servingC:Number(brC.value)||0,servingF:Number(brF.value)||0,k:k*100/g,p:(Number(brP.value)||0)*100/g,c:(Number(brC.value)||0)*100/g,f:(Number(brF.value)||0)*100/g,preferredMode:"serving"};closeModal("scannerModal");stopScanner();openFood(state.mealNames[0]);selectFood(barcodeReviewFood)}}catch(e){barcodeResults.innerHTML="<div class='empty'>Sem conexão para consultar o produto.</div>"}};
+
+async function fetchOFFJson(url,timeoutMs=12000){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),timeoutMs);
+  try{
+    const r=await fetch(url,{
+      method:"GET",
+      mode:"cors",
+      cache:"no-store",
+      headers:{"Accept":"application/json"},
+      signal:controller.signal
+    });
+
+    if(r.status===429){
+      const e=new Error("rate-limit");e.kind="rate";throw e;
+    }
+    if([502,503,504].includes(r.status)){
+      const e=new Error("server-unavailable");e.kind="server";throw e;
+    }
+    if(!r.ok){
+      const e=new Error("http-"+r.status);e.kind="http";e.status=r.status;throw e;
+    }
+
+    const contentType=r.headers.get("content-type")||"";
+    if(!contentType.toLowerCase().includes("json")){
+      const e=new Error("invalid-response");e.kind="invalid";throw e;
+    }
+
+    return await r.json();
+  }catch(e){
+    if(e?.name==="AbortError"){e.kind="timeout"}
+    throw e;
+  }finally{
+    clearTimeout(timer);
+  }
+}
+
+async function getOFFBarcode(code){
+  const fields="code,product_name,brands,nutriments,serving_quantity,serving_size,nutrition_data_per,image_front_small_url";
+  const urls=[
+    `https://world.openfoodfacts.org/api/v3.6/product/${encodeURIComponent(code)}.json?fields=${fields}`,
+    `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=${fields}`
+  ];
+
+  let lastError=null;
+  for(const url of urls){
+    try{
+      const data=await fetchOFFJson(url);
+      if(data?.product)return {product:data.product,data};
+      if(data?.status===0)return {notFound:true,data};
+    }catch(e){
+      lastError=e;
+    }
+  }
+
+  if(lastError)throw lastError;
+  return {notFound:true};
+}
+
+function showBarcodeConnectionError(code,e){
+  let msg="";
+  if(navigator.onLine===false){
+    msg="Seu aparelho está sem acesso à internet no momento.";
+  }else if(e?.kind==="rate"){
+    msg="O Open Food Facts limitou temporariamente as consultas. Aguarde alguns segundos e tente novamente.";
+  }else if(e?.kind==="server"){
+    msg="O servidor do Open Food Facts está temporariamente indisponível. Sua internet pode estar funcionando normalmente.";
+  }else if(e?.kind==="timeout"){
+    msg="A consulta demorou demais para responder. Sua internet está conectada, mas o Open Food Facts não respondeu a tempo.";
+  }else{
+    msg="Não foi possível consultar o Open Food Facts agora. Isso não significa necessariamente que sua internet esteja sem conexão.";
+  }
+
+  barcodeResults.innerHTML=`
+    <div class="empty">
+      ${esc(msg)}
+      <br><br>
+      <button class="btn btn-primary" id="retryBarcodeLookup" type="button">↻ Tentar novamente</button>
+    </div>`;
+  document.getElementById("retryBarcodeLookup")?.addEventListener("click",()=>lookupBarcode(code));
+}
+
+lookupBarcode=async function(code){
+  code=String(code||"").replace(/\D/g,"");
+  if(!code)return;
+
+  barcodeResults.innerHTML="<div class='skeleton'></div><div class='skeleton'></div>";
+
+  try{
+    const result=await getOFFBarcode(code);
+    if(result.notFound||!result.product){
+      barcodeResults.innerHTML="<div class='empty'>Produto não encontrado no Open Food Facts.</div>";
+      return;
+    }
+
+    const p=result.product;
+    barcodeReviewFood=foodFromOFFProduct(p,code);
+
+    if(!barcodeReviewFood){
+      barcodeResults.innerHTML="<div class='empty'>Produto encontrado, mas sem calorias preenchidas.</div>";
+      return;
+    }
+
+    const f=barcodeReviewFood;
+    barcodeResults.innerHTML=`<div class="selected">${p.image_front_small_url?`<img src="${esc(p.image_front_small_url)}" style="width:80px;height:80px;object-fit:contain;float:right">`:""}<b>${esc(f.n)}</b><div style="clear:both"></div><label>Porção do rótulo (g)</label><input id="brServing" type="number" step=".1" value="${f.servingG||100}"><label>Calorias por porção</label><input id="brK" type="number" step=".1" value="${f.servingK??(f.k*f.servingG/100)}"><div class="quick-grid"><div><label>Proteína/porção</label><input id="brP" type="number" step=".1" value="${f.servingP??(f.p*f.servingG/100)}"></div><div><label>Carbo/porção</label><input id="brC" type="number" step=".1" value="${f.servingC??(f.c*f.servingG/100)}"></div></div><label>Gordura/porção</label><input id="brF" type="number" step=".1" value="${f.servingF??(f.f*f.servingG/100)}"><p class="note">Confira com o rótulo. O app converte esses valores para 100 g internamente.</p><button class="btn btn-primary" id="confirmBarcodeReview">Usar produto</button></div>`;
+
+    confirmBarcodeReview.onclick=()=>{
+      const g=Number(brServing.value)||100,k=Number(brK.value)||0;
+      barcodeReviewFood={
+        ...barcodeReviewFood,
+        servingG:g,
+        servingK:k,
+        servingP:Number(brP.value)||0,
+        servingC:Number(brC.value)||0,
+        servingF:Number(brF.value)||0,
+        k:k*100/g,
+        p:(Number(brP.value)||0)*100/g,
+        c:(Number(brC.value)||0)*100/g,
+        f:(Number(brF.value)||0)*100/g,
+        preferredMode:"serving"
+      };
+      closeModal("scannerModal");
+      stopScanner();
+      openFood(state.mealNames[0]);
+      selectFood(barcodeReviewFood);
+    };
+  }catch(e){
+    showBarcodeConnectionError(code,e);
+  }
+};
 
 // Water containers/stats
 function waterStreak(){let n=0,d=new Date();d.setHours(12,0,0,0),goal=Number(state.profile.waterGoalMl)||2000;for(let i=0;i<365;i++){const k=localDateKey(d),ml=(state.days[k]?.water||[]).reduce((a,x)=>a+Number(x.ml||0),0);if(ml>=goal)n++;else if(i===0){d.setDate(d.getDate()-1);continue}else break;d.setDate(d.getDate()-1)}return n}
