@@ -54,13 +54,12 @@ body.dark{color:#fff}body.dark .card,body.dark .modal-box,body.dark .menu-box{ba
 .favorite-filters{display:flex;gap:6px;overflow:auto;margin-bottom:8px}.fav-cat{font-size:11px}
 .recipe-photo{width:76px;height:76px;object-fit:cover;border-radius:12px;background:#eee;flex:0 0 76px}
 .recipe-card-main{display:flex;gap:10px;align-items:flex-start}.recipe-info{flex:1}
-.ocr-filled{border:2px solid #10b981!important;background:#ecfdf5!important}
 .calendar-day.cal-good{background:#dcfce7;border-color:#22c55e}.calendar-day.cal-near{background:#fef3c7;border-color:#f59e0b}.calendar-day.cal-over{background:#fee2e2;border-color:#ef4444}.calendar-day.cal-water{box-shadow:inset 0 -4px 0 #3b82f6}
 .undo-bar{position:fixed;left:50%;bottom:82px;transform:translateX(-50%) translateY(130px);width:min(520px,calc(100% - 24px));background:#222;color:#fff;border-radius:15px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;z-index:5000;transition:.25s;box-shadow:0 8px 25px #0005}.undo-bar.show{transform:translateX(-50%) translateY(0)}.undo-bar button{width:auto;margin:0;padding:8px 12px;border-radius:10px;background:#fff;color:#222;font-weight:800}
 .onboard-steps{display:flex;gap:6px;margin-bottom:15px}.onboard-dot{height:6px;flex:1;border-radius:10px;background:#ddd}.onboard-dot.active{background:var(--primary)}
 .skeleton{height:54px;border-radius:12px;margin:7px 0;background:linear-gradient(90deg,#eee 25%,#f8f8f8 50%,#eee 75%);background-size:200% 100%;animation:skeleton 1.2s infinite}
 @keyframes skeleton{to{background-position:-200% 0}}@keyframes modalIn{from{transform:translateY(16px);opacity:.5}to{transform:none;opacity:1}}.modal.open .modal-box{animation:modalIn .18s ease-out}
-body.dark .plan-day,body.dark .plan-stat,body.dark .insight,body.dark body.dark .shopping-item{border-color:#292929}body.dark .insight small,body.dark .plan-stat small{color:#aaa}body.dark .ocr-filled{background:#062b1d!important}
+body.dark .plan-day,body.dark .plan-stat,body.dark .insight,body.dark body.dark .shopping-item{border-color:#292929}body.dark .insight small,body.dark .plan-stat small{color:#aaa}
 
 /* v13 — Refino + Inteligência */
 .smart-list{display:grid;gap:8px}.smart-tip{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border-radius:14px;background:#f7f7fb}.smart-tip .smart-icon{font-size:22px;line-height:1}.smart-tip b{display:block;font-size:13px;margin-bottom:2px}.smart-tip small{display:block;color:#777;line-height:1.4}
@@ -779,7 +778,7 @@ body.dark .assistant-macro b{color:#f4f6fb}
 <!-- ADICIONAR ALIMENTO -->
 <div class="modal" id="foodModal"><div class="modal-box">
   <div class="modal-title"><h2>➕ Adicionar alimento</h2><button class="modal-close" id="closeFood">×</button></div>
-  <div class="tabs"><button class="tab active" data-food-tab="searchFoodTab">Buscar</button><button class="tab" data-food-tab="assistantFoodTab">🤖 Assistente</button><button class="tab" data-food-tab="manualFoodTab">Manual/OCR</button></div>
+  <div class="tabs"><button class="tab active" data-food-tab="searchFoodTab">Buscar</button><button class="tab" data-food-tab="assistantFoodTab">🤖 Assistente</button><button class="tab" data-food-tab="manualFoodTab">Manual</button></div>
   <div id="searchFoodTab">
     <label>Refeição</label><select id="foodMeal"></select>
     <label>Buscar alimento, favorito, recente ou produto</label>
@@ -827,13 +826,7 @@ body.dark .assistant-macro b{color:#f4f6fb}
 
   <div id="manualFoodTab" class="hidden">
     <label>Refeição</label><select id="manualMeal"></select>
-    <div class="quick-grid"><button class="btn btn-primary" id="manualCameraBtn">📷 Tirar foto da tabela</button><button class="btn btn-green" id="manualGalleryBtn">🖼️ Galeria</button></div>
-    <input id="nutritionCameraFile" type="file" accept="image/*" capture="environment" class="hidden"><input id="nutritionGalleryFile" type="file" accept="image/*" class="hidden">
-    <div class="camera-box hidden" id="nutritionLiveBox"><video id="nutritionVideo" autoplay playsinline muted></video><div class="scan-line"></div></div>
-    <div class="quick-grid hidden" id="nutritionLiveActions"><button class="btn btn-red" id="nutritionCloseLive">Fechar câmera</button><button class="btn btn-primary" id="nutritionCapture">📸 Capturar</button></div>
-    <canvas id="nutritionCanvas" class="hidden"></canvas><img id="nutritionPreview" class="preview-img hidden" alt="Prévia da tabela">
-    <button class="add-btn" id="readNutritionPhoto" disabled>✨ Ler tabela e preencher</button>
-    <div id="ocrStatus" class="note">A leitura tenta usar a coluna de 100 g; quando houver apenas porção em gramas, converte para 100 g.</div>
+    <p class="note" style="margin-top:10px">Use esta opção para cadastrar um alimento manualmente quando ele não estiver na busca ou quando o código de barras não tiver informações nutricionais.</p>
     <label>Nome</label><input id="manualName" placeholder="Ex.: Meu whey">
     <label>Calorias por 100 g</label><input id="manualKcal" type="number" min="0" step="0.1">
     <label>Proteína por 100 g</label><input id="manualP" type="number" min="0" step="0.1" value="0">
@@ -1128,7 +1121,7 @@ function upgradeState(s){
 }
 const migratedOld=migrateOldState();
 let state=upgradeState(deepMerge(DEFAULT_STATE,migratedOld||JSON.parse(localStorage.getItem("minhasCaloriasCompleto")||"null")));
-let selectedDate=new Date();selectedDate.setHours(12,0,0,0);let historyDays=7;let calendarDate=new Date();let selectedFood=null;let selectedRecipeFood=null;let recipeDraft=[];let nutritionStream=null;let scannerStream=null;let scannerTimer=null;let nutritionWorker=null;let barcodeWorker=null;let capturedNutritionFile=null;
+let selectedDate=new Date();selectedDate.setHours(12,0,0,0);let historyDays=7;let calendarDate=new Date();let selectedFood=null;let selectedRecipeFood=null;let recipeDraft=[];let scannerStream=null;let scannerTimer=null;let barcodeWorker=null;
 function key(d=selectedDate){return localDateKey(d)}
 function localDateKey(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${day}`}
 function ensureDay(k=key()){if(!state.days[k])state.days[k]={meals:{},water:[],note:"",mealPhoto:null};const d=state.days[k];d.meals=d.meals||{};state.mealNames.forEach(m=>d.meals[m]=d.meals[m]||[]);d.mealPhotos=d.mealPhotos||{};d.water=d.water||[];return d}
@@ -1255,57 +1248,6 @@ function foodFromOFFProduct(p,code=""){
   };
 }
 async function searchOnline(){const q=document.getElementById("foodSearch").value.trim();if(!q)return;const cache=state.offCache[q.toLowerCase()];if(cache&&Date.now()-cache.at<7*86400000){showFoodResults(cache.items);return}const box=document.getElementById("foodResults");box.innerHTML="<div class='empty'>Buscando produtos...</div>";try{const url="https://world.openfoodfacts.org/cgi/search.pl?search_terms="+encodeURIComponent(q)+"&search_simple=1&action=process&json=1&page_size=20&fields=code,product_name,brands,nutriments,serving_quantity,serving_size,nutrition_data_per";const res=await fetch(url),data=await res.json();const items=(data.products||[]).map(p=>foodFromOFFProduct(p,p.code||"")).filter(Boolean);state.offCache[q.toLowerCase()]={at:Date.now(),items};save(false);showFoodResults(items)}catch(e){box.innerHTML="<div class='empty'>Não foi possível consultar a internet. Use a base local ou o modo manual.</div>"}}
-// OCR nutrition
-function parseNum(s){const n=Number(String(s||"").replace(/\s/g,"").replace(",","."));return Number.isFinite(n)?n:null}function compact(s){return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()}function nums(line){return (String(line).match(/\d+(?:[.,]\d+)?/g)||[]).map(parseNum).filter(x=>x!=null)}function findLine(lines,patterns){for(let i=0;i<lines.length;i++){const c=compact(lines[i]);if(patterns.some(p=>p.test(c)))return lines[i]+(!nums(lines[i]).length&&lines[i+1]?" "+lines[i+1]:"")}return ""}function firstVal(line,energy=false){if(energy){const m=String(line).match(/(\d+(?:[.,]\d+)?)\s*kcal/i);if(m)return parseNum(m[1])}return nums(line)[0]??null}
-function parseNutrition(raw){const lines=String(raw||"").split(/\r?\n/).map(x=>x.trim()).filter(Boolean),flat=compact(raw),has100=/\b100\s*g\b/.test(flat);let serving=null;const sm=flat.match(/porcao(?:\s+de|:)?\s*(\d+(?:[.,]\d+)?)\s*g/);if(sm)serving=parseNum(sm[1]);const map={k:[/valor\s*energet/,/energia/,/calori/],p:[/proteina/],c:[/carboidr/],f:[/gorduras?\s+totais?/,/gordura\s+total/],fiber:[/fibra/],sugar:[/acucar/,/açucar/],sodium:[/sodio/],chol:[/colesterol/]};const v={};Object.entries(map).forEach(([k,pats])=>v[k]=firstVal(findLine(lines,pats),k==="k"));if(!has100&&serving&&serving>0&&serving!==100){const fac=100/serving;Object.keys(v).forEach(k=>{if(v[k]!=null)v[k]*=fac})}return {v,has100,serving}}
-async function getNutritionWorker(){
-  if(nutritionWorker)return nutritionWorker;
-  if(!window.Tesseract)throw new Error("Leitor OCR não carregou.");
-  nutritionWorker=await Tesseract.createWorker("por",1,{logger:m=>{
-    if(m.status==="recognizing text")document.getElementById("ocrStatus").textContent=`Lendo tabela... ${Math.round((m.progress||0)*100)}%`;
-    else if(m.status&&m.status!=="recognizing text")document.getElementById("ocrStatus").textContent="Preparando leitor...";
-  }});
-  try{await nutritionWorker.setParameters({tessedit_pageseg_mode:"6",preserve_interword_spaces:"1"})}catch(e){}
-  return nutritionWorker
-}
-async function prepareNutritionImage(file){
-  if(!file)return file;
-  try{
-    const bitmap=await createImageBitmap(file);
-    const maxSide=1400,largest=Math.max(bitmap.width,bitmap.height),scale=Math.min(1,maxSide/largest);
-    const canvas=document.createElement("canvas");
-    canvas.width=Math.max(1,Math.round(bitmap.width*scale));
-    canvas.height=Math.max(1,Math.round(bitmap.height*scale));
-    const ctx=canvas.getContext("2d");
-    if("filter" in ctx)ctx.filter="grayscale(1) contrast(1.25)";
-    ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
-    bitmap.close?.();
-    return canvas;
-  }catch(e){return file}
-}
-async function readNutrition(file){
-  if(!file)return;
-  const status=document.getElementById("ocrStatus");
-  status.textContent="Otimizando imagem...";
-  try{
-    // Worker e redimensionamento são preparados em paralelo para reduzir espera.
-    const workerPromise=getNutritionWorker();
-    const imagePromise=prepareNutritionImage(file);
-    const [w,image]=await Promise.all([workerPromise,imagePromise]);
-    status.textContent="Lendo tabela...";
-    const r=await w.recognize(image),p=parseNutrition(r.data.text),v=p.v;
-    const ids={k:"manualKcal",p:"manualP",c:"manualC",f:"manualF",fiber:"manualFiber",sugar:"manualSugar",sodium:"manualSodium",chol:"manualChol"};
-    let found=0;
-    Object.entries(ids).forEach(([k,id])=>{if(v[k]!=null&&v[k]>=0&&Number.isFinite(v[k])){document.getElementById(id).value=(Math.round(v[k]*10)/10);found++}});
-    const warnings=[];
-    if(v.p>100||v.c>100||v.f>100||v.fiber>100||v.sugar>100)warnings.push("Há um nutriente acima de 100 g/100 g; confira a leitura.");
-    if(v.sodium>10000)warnings.push("Sódio muito alto; confira a unidade.");
-    status.textContent=found?`✓ ${found} campos preenchidos. ${p.has100?"Usei a coluna de 100 g.":p.serving?`Converti a porção de ${p.serving} g para 100 g.`:"Não identifiquei claramente 100 g/porção."} ${warnings.join(" ")}`:"Não consegui identificar os valores. Tente outra foto.";
-  }catch(e){status.textContent=e.message||"Falha na leitura."}
-}
-function setNutritionFile(file){capturedNutritionFile=file;const img=document.getElementById("nutritionPreview");if(file){img.src=URL.createObjectURL(file);img.classList.remove("hidden");document.getElementById("readNutritionPhoto").disabled=false}else{img.classList.add("hidden");document.getElementById("readNutritionPhoto").disabled=true}}
-function stopNutritionLive(){if(nutritionStream){nutritionStream.getTracks().forEach(t=>t.stop());nutritionStream=null}document.getElementById("nutritionLiveBox").classList.add("hidden");document.getElementById("nutritionLiveActions").classList.add("hidden")}
-async function openNutritionCamera(){getNutritionWorker().catch(()=>{});stopNutritionLive();if(window.isSecureContext&&navigator.mediaDevices?.getUserMedia){try{nutritionStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});const v=document.getElementById("nutritionVideo");v.srcObject=nutritionStream;await v.play();document.getElementById("nutritionLiveBox").classList.remove("hidden");document.getElementById("nutritionLiveActions").classList.remove("hidden");return}catch(e){}}document.getElementById("nutritionCameraFile").click()}
 // Barcode
 async function lookupBarcode(code){
   code=String(code||"").replace(/\D/g,"");if(!code)return;
@@ -1457,7 +1399,7 @@ saveRecipe.onclick=()=>{
 editProfileBtn.onclick=()=>{const p=state.profile;profileSex.value=p.sex;profileAge.value=p.age||"";profileWeight.value=p.weight||"";profileHeight.value=p.height||"";profileActivity.value=p.activity||1.2;profileObjective.value=p.objective||"maintain";targetWeight.value=p.targetWeight||"";calorieGoalInput.value=p.calorieGoal||2000;targetP.value=p.macroTargets.p||0;targetC.value=p.macroTargets.c||0;targetF.value=p.macroTargets.f||0;calorieCalcResult.textContent="";openModal("profileModal")};calculateCaloriesBtn.onclick=()=>{const sex=profileSex.value,age=Number(profileAge.value),w=Number(profileWeight.value),h=Number(profileHeight.value),a=Number(profileActivity.value),o=profileObjective.value;if(!(age>0&&w>0&&h>0))return toast("Preencha idade, peso e altura.");const bmr=10*w+6.25*h-5*age+(sex==="male"?5:-161),tdee=bmr*a;let target=tdee;if(o==="lose")target-=400;if(o==="gain")target+=300;calorieGoalInput.value=Math.round(target);calorieCalcResult.innerHTML=`Metabolismo basal: <b>${fmt(bmr)} kcal</b>. Manutenção estimada: <b>${fmt(tdee)} kcal</b>. Sugestão: <b>${fmt(target)} kcal/dia</b>.`};saveProfile.onclick=()=>{const g=Number(calorieGoalInput.value);if(!(g>=500))return toast("Meta calórica inválida.");Object.assign(state.profile,{sex:profileSex.value,age:Number(profileAge.value)||null,weight:Number(profileWeight.value)||null,height:Number(profileHeight.value)||null,activity:Number(profileActivity.value)||1.2,objective:profileObjective.value,targetWeight:Number(targetWeight.value)||null,calorieGoal:Math.round(g),macroTargets:{p:Number(targetP.value)||0,c:Number(targetC.value)||0,f:Number(targetF.value)||0}});if(state.profile.weight){const last=state.weights.at(-1);if(!last||last.date!==key()||Number(last.weight)!==Number(state.profile.weight))state.weights.push({date:key(),weight:Number(state.profile.weight)})}save();closeModal("profileModal");renderAll();toast("Perfil salvo.")};saveMealTargets.onclick=()=>{state.profile.mealTargets={};document.querySelectorAll(".meal-target-input").forEach(i=>state.profile.mealTargets[i.dataset.meal]=Number(i.value)||0);save();renderToday();toast("Metas por refeição salvas.")};addMealNameBtn.onclick=()=>{const n=prompt("Nome da nova refeição:");if(!n||state.mealNames.includes(n))return;state.mealNames.push(n);Object.values(state.days).forEach(d=>{d.meals=d.meals||{};d.meals[n]=d.meals[n]||[]});save();renderAll()};addReminderBtn.onclick=()=>openModal("reminderModal");saveReminder.onclick=()=>{if(!reminderTime.value)return toast("Escolha um horário.");state.reminders.push({id:uid(),type:reminderType.value,time:reminderTime.value,message:reminderMessage.value.trim()});save();closeModal("reminderModal");renderReminders()};requestNotifications.onclick=async()=>{if(!("Notification" in window))return toast("Notificações não são suportadas aqui.");const p=await Notification.requestPermission();toast(p==="granted"?"Notificações permitidas.":"Permissão não concedida.")};setInterval(()=>{if(!("Notification" in window)||Notification.permission!=="granted")return;const now=new Date(),hm=now.toTimeString().slice(0,5),day=localDateKey(now);state.reminders.forEach(r=>{const sk=`rem-${r.id}-${day}`;if(r.time===hm&&!sessionStorage.getItem(sk)){new Notification("Minhas Calorias",{body:r.message||`Lembrete: ${r.type}`});sessionStorage.setItem(sk,"1")}})},30000);
 themeBtn.onclick=()=>{state.settings.dark=!state.settings.dark;save();applyAppearance()};backgroundColor.oninput=()=>{state.settings.bg=backgroundColor.value;save();applyAppearance()};exportBtn.onclick=()=>{const a=document.createElement("a"),blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});a.href=URL.createObjectURL(blob);a.download="minhas-calorias-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};importBtn.onclick=()=>importFile.click();importFile.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{state=upgradeState(deepMerge(DEFAULT_STATE,JSON.parse(r.result)));save(false);renderAll();toast("Backup importado.")}catch{toast("Arquivo inválido.")}};r.readAsText(f)};restoreBackupBtn.onclick=()=>{const arr=JSON.parse(localStorage.getItem("mcAutoBackups")||"[]");if(!arr.length)return toast("Nenhum backup automático disponível.");const txt=arr.map((x,i)=>`${i+1}. ${new Date(x.at).toLocaleString("pt-BR")}`).join("\n"),n=Number(prompt("Escolha o backup:\n"+txt,"1"));if(!(n>=1&&n<=arr.length))return;state=upgradeState(deepMerge(DEFAULT_STATE,arr[n-1].data));save(false);renderAll();toast("Backup restaurado.")};clearBtn.onclick=()=>{if(confirm("Apagar todos os dados do app?")){localStorage.removeItem("minhasCaloriasCompleto");location.reload()}};
 menuProfile.onclick=()=>{menuModal.classList.remove("open");switchPage("profilePage")};menuWaterCalc.onclick=()=>{menuModal.classList.remove("open");waterCalcBtn.click()};menuReminders.onclick=()=>{menuModal.classList.remove("open");switchPage("profilePage");setTimeout(()=>addReminderBtn.scrollIntoView({behavior:"smooth",block:"center"}),100)};menuTheme.onclick=()=>{themeBtn.click();menuModal.classList.remove("open")};menuColor.onclick=()=>{menuModal.classList.remove("open");switchPage("profilePage");setTimeout(()=>backgroundColor.scrollIntoView({behavior:"smooth",block:"center"}),100)};menuExport.onclick=()=>{exportBtn.click();menuModal.classList.remove("open")};menuImport.onclick=()=>{importBtn.click();menuModal.classList.remove("open")};
-document.querySelectorAll("[data-food-tab]").forEach(t=>t.onclick=()=>{document.querySelectorAll("[data-food-tab]").forEach(x=>x.classList.toggle("active",x===t));["searchFoodTab","assistantFoodTab","manualFoodTab"].forEach(id=>document.getElementById(id).classList.toggle("hidden",t.dataset.foodTab!==id));if(t.dataset.foodTab==="manualFoodTab")getNutritionWorker().catch(()=>{})});foodSearchBtn.onclick=()=>showFoodResults(searchLocal(foodSearch.value));foodSearch.onkeydown=e=>{if(e.key==="Enter")foodSearchBtn.click()};searchOnlineBtn.onclick=searchOnline;portionMode.onchange=updateServingHint;saveSelectedFood.onclick=()=>{if(!selectedFood)return;const mode=portionMode.value,amount=Number(foodAmount.value);if(!(amount>0))return toast("Quantidade inválida.");const grams=mode==="serving"?amount*selectedFood.servingG:["slice","spoon","cup"].includes(mode)?amount*Number(portionEquivalent.value||0):amount;if(!(grams>0))return toast("Informe o equivalente em gramas.");addFoodToMeal(selectedFood,foodMeal.value,grams,mode==="ml"?"ml":"g");closeFoodModal()};barcodeBtn.onclick=()=>{closeFoodModal();startScanner()};closeScanner.onclick=()=>{stopScanner();closeModal("scannerModal")};barcodeLookup.onclick=()=>lookupBarcode(barcodeInput.value);barcodeInput.onkeydown=e=>{if(e.key==="Enter")barcodeLookup.click()};barcodeNativePhotoBtn.onclick=()=>barcodeCameraFile.click();barcodeCameraFile.onchange=e=>{const f=e.target.files[0];if(f)detectBarcodePhoto(f);e.target.value=""};manualCameraBtn.onclick=openNutritionCamera;manualGalleryBtn.onclick=()=>{getNutritionWorker().catch(()=>{});nutritionGalleryFile.click()};nutritionCameraFile.onchange=e=>{const f=e.target.files[0];if(f)setNutritionFile(f);e.target.value=""};nutritionGalleryFile.onchange=e=>{const f=e.target.files[0];if(f)setNutritionFile(f);e.target.value=""};nutritionCloseLive.onclick=stopNutritionLive;nutritionCapture.onclick=()=>{const v=nutritionVideo,c=nutritionCanvas;if(!v.videoWidth)return;c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0,c.width,c.height);c.toBlob(b=>{if(b)setNutritionFile(new File([b],"tabela.jpg",{type:"image/jpeg"}));stopNutritionLive()},"image/jpeg",.92)};readNutritionPhoto.onclick=()=>readNutrition(capturedNutritionFile);saveManualFood.onclick=()=>{const f={n:manualName.value.trim(),k:Number(manualKcal.value),p:Number(manualP.value)||0,c:Number(manualC.value)||0,f:Number(manualF.value)||0,fiber:Number(manualFiber.value)||0,sugar:Number(manualSugar.value)||0,sodium:Number(manualSodium.value)||0,chol:Number(manualChol.value)||0,servingG:100,s:"Manual / rótulo"},g=Number(manualG.value);if(!f.n||!(f.k>=0)||!(g>0))return toast("Preencha nome, calorias e quantidade.");const suspicious=f.p>100||f.c>100||f.f>100;if(suspicious&&!confirm("Há nutriente acima de 100 g por 100 g. Deseja adicionar mesmo assim?"))return;if(saveAsCustom.checked)state.customFoods.push({...f,s:"Personalizado"});addFoodToMeal(f,manualMeal.value,g);closeFoodModal()};
+document.querySelectorAll("[data-food-tab]").forEach(t=>t.onclick=()=>{document.querySelectorAll("[data-food-tab]").forEach(x=>x.classList.toggle("active",x===t));["searchFoodTab","assistantFoodTab","manualFoodTab"].forEach(id=>document.getElementById(id).classList.toggle("hidden",t.dataset.foodTab!==id));});foodSearchBtn.onclick=()=>showFoodResults(searchLocal(foodSearch.value));foodSearch.onkeydown=e=>{if(e.key==="Enter")foodSearchBtn.click()};searchOnlineBtn.onclick=searchOnline;portionMode.onchange=updateServingHint;saveSelectedFood.onclick=()=>{if(!selectedFood)return;const mode=portionMode.value,amount=Number(foodAmount.value);if(!(amount>0))return toast("Quantidade inválida.");const grams=mode==="serving"?amount*selectedFood.servingG:["slice","spoon","cup"].includes(mode)?amount*Number(portionEquivalent.value||0):amount;if(!(grams>0))return toast("Informe o equivalente em gramas.");addFoodToMeal(selectedFood,foodMeal.value,grams,mode==="ml"?"ml":"g");closeFoodModal()};barcodeBtn.onclick=()=>{closeFoodModal();startScanner()};closeScanner.onclick=()=>{stopScanner();closeModal("scannerModal")};barcodeLookup.onclick=()=>lookupBarcode(barcodeInput.value);barcodeInput.onkeydown=e=>{if(e.key==="Enter")barcodeLookup.click()};barcodeNativePhotoBtn.onclick=()=>barcodeCameraFile.click();barcodeCameraFile.onchange=e=>{const f=e.target.files[0];if(f)detectBarcodePhoto(f);e.target.value=""};saveManualFood.onclick=()=>{const f={n:manualName.value.trim(),k:Number(manualKcal.value),p:Number(manualP.value)||0,c:Number(manualC.value)||0,f:Number(manualF.value)||0,fiber:Number(manualFiber.value)||0,sugar:Number(manualSugar.value)||0,sodium:Number(manualSodium.value)||0,chol:Number(manualChol.value)||0,servingG:100,s:"Manual"},g=Number(manualG.value);if(!f.n||!(f.k>=0)||!(g>0))return toast("Preencha nome, calorias e quantidade.");const suspicious=f.p>100||f.c>100||f.f>100;if(suspicious&&!confirm("Há nutriente acima de 100 g por 100 g. Deseja adicionar mesmo assim?"))return;if(saveAsCustom.checked)state.customFoods.push({...f,s:"Personalizado"});addFoodToMeal(f,manualMeal.value,g);closeFoodModal()};
 
 
 // ============================================================
@@ -1772,17 +1714,13 @@ saveCustomFood.onclick=()=>{const f=customFoodFromForm();if(!f.n||!(f.k>=0))retu
 
 // Manual micros
 saveManualFood.onclick=()=>{
-  const f={n:manualName.value.trim(),k:Number(manualKcal.value),p:Number(manualP.value)||0,c:Number(manualC.value)||0,f:Number(manualF.value)||0,fiber:Number(manualFiber.value)||0,sugar:Number(manualSugar.value)||0,sodium:Number(manualSodium.value)||0,chol:Number(manualChol.value)||0,satFat:Number(manualSatFat.value)||0,calcium:Number(manualCalcium.value)||0,iron:Number(manualIron.value)||0,potassium:Number(manualPotassium.value)||0,magnesium:Number(manualMagnesium.value)||0,vitC:Number(manualVitC.value)||0,vitA:Number(manualVitA.value)||0,vitD:Number(manualVitD.value)||0,servingG:100,s:"Manual / rótulo"},g=Number(manualG.value);
+  const f={n:manualName.value.trim(),k:Number(manualKcal.value),p:Number(manualP.value)||0,c:Number(manualC.value)||0,f:Number(manualF.value)||0,fiber:Number(manualFiber.value)||0,sugar:Number(manualSugar.value)||0,sodium:Number(manualSodium.value)||0,chol:Number(manualChol.value)||0,satFat:Number(manualSatFat.value)||0,calcium:Number(manualCalcium.value)||0,iron:Number(manualIron.value)||0,potassium:Number(manualPotassium.value)||0,magnesium:Number(manualMagnesium.value)||0,vitC:Number(manualVitC.value)||0,vitA:Number(manualVitA.value)||0,vitD:Number(manualVitD.value)||0,servingG:100,s:"Manual"},g=Number(manualG.value);
   if(!f.n||!(f.k>=0)||!(g>0))return toast("Preencha nome, calorias e quantidade.");
   if((f.p>100||f.c>100||f.f>100)&&!confirm("Há nutriente acima de 100 g por 100 g. Deseja adicionar mesmo assim?"))return;
   if(saveAsCustom.checked)state.customFoods.push({...f,s:"Personalizado"});
   if(foodAddContext.type==="plan"){plannerDate=dateObj(foodAddContext.date);addFoodToPlan(f,foodAddContext.meal||manualMeal.value,g)}else addFoodToMeal(f,manualMeal.value,g);
   closeFoodModal();renderAll();
 };
-
-// OCR visual review
-const fastOCRRead=readNutrition;
-readNutrition=async file=>{document.querySelectorAll("#manualFoodTab input").forEach(i=>i.classList.remove("ocr-filled"));await fastOCRRead(file);["manualKcal","manualP","manualC","manualF","manualFiber","manualSugar","manualSodium","manualChol"].forEach(id=>{const el=document.getElementById(id);if(el&&el.value!==""&&Number(el.value)>=0)el.classList.add("ocr-filled")});ocrStatus.innerHTML+=` <b>Campos verdes foram reconhecidos; confira antes de salvar.</b>`};
 
 // Barcode review
 let barcodeReviewFood=null;
@@ -1825,24 +1763,19 @@ async function fetchOFFJson(url,timeoutMs=12000){
 
 async function getOFFBarcode(code){
   const fields="code,product_name,brands,nutriments,serving_quantity,serving_size,nutrition_data_per,image_front_small_url";
-  const urls=[
-    `https://world.openfoodfacts.org/api/v3.6/product/${encodeURIComponent(code)}.json?fields=${fields}`,
-    `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=${fields}`
-  ];
+  const url=`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=${fields}`;
 
-  let lastError=null;
-  for(const url of urls){
-    try{
-      const data=await fetchOFFJson(url);
-      if(data?.product)return {product:data.product,data};
-      if(data?.status===0)return {notFound:true,data};
-    }catch(e){
-      lastError=e;
-    }
+  const data=await fetchOFFJson(url);
+
+  if(data?.status===1&&data?.product){
+    return {product:data.product,data};
   }
 
-  if(lastError)throw lastError;
-  return {notFound:true};
+  if(data?.product){
+    return {product:data.product,data};
+  }
+
+  return {notFound:true,data};
 }
 
 function showBarcodeConnectionError(code,e){
@@ -1885,7 +1818,26 @@ lookupBarcode=async function(code){
     barcodeReviewFood=foodFromOFFProduct(p,code);
 
     if(!barcodeReviewFood){
-      barcodeResults.innerHTML="<div class='empty'>Produto encontrado, mas sem calorias preenchidas.</div>";
+      const productName=p.product_name||"Produto";
+      barcodeResults.innerHTML=`
+        <div class="empty">
+          <b>${esc(productName)}</b><br><br>
+          Este produto foi encontrado, mas o banco não possui calorias cadastradas.
+          <br><br>
+          <button class="btn btn-primary" id="barcodeManualFill" type="button">✏️ Preencher manualmente</button>
+        </div>`;
+      document.getElementById("barcodeManualFill")?.addEventListener("click",()=>{
+        closeModal("scannerModal");
+        stopScanner();
+        openFood(state.mealNames[0]);
+        document.querySelector('[data-food-tab="manualFoodTab"]')?.click();
+        manualName.value=productName;
+        manualKcal.value="";
+        setTimeout(()=>{
+          manualKcal.scrollIntoView({behavior:"smooth",block:"center"});
+          manualKcal.focus();
+        },120);
+      });
       return;
     }
 
