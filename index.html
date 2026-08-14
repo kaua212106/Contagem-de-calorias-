@@ -1622,7 +1622,7 @@ BASE_FOODS.push(
 calcDayTotals=function(d=ensureDay()){const t={};ALL_NUTRIENT_KEYS.forEach(k=>t[k]=0);Object.values(d.meals||{}).forEach(arr=>(arr||[]).forEach(x=>ALL_NUTRIENT_KEYS.forEach(n=>t[n]+=Number(x[n]||0))));return t};
 normalizeFood=function(f){const o={n:f.n||f.name||"Alimento",servingG:Number(f.servingG||100),servingK:Number.isFinite(Number(f.servingK))?Number(f.servingK):null,servingP:Number.isFinite(Number(f.servingP))?Number(f.servingP):null,servingC:Number.isFinite(Number(f.servingC))?Number(f.servingC):null,servingF:Number.isFinite(Number(f.servingF))?Number(f.servingF):null,preferredMode:f.preferredMode||"g",nutritionBasis:f.nutritionBasis||"",s:f.s||f.source||"",portions:clone(f.portions||{})};ALL_NUTRIENT_KEYS.forEach(k=>o[k]=Number(f[k]||0));return o};
 foodFromEntry=function(x){const factor=100/Math.max(.01,Number(x.g)||100),o={n:x.name,servingG:x.servingG||100,s:x.source||"Registro",portions:clone(x.portions||{})};ALL_NUTRIENT_KEYS.forEach(k=>o[k]=Number(x[k]||0)*factor);return o};
-addFoodToMeal=function(food,meal,grams){const f=normalizeFood(food),g=Number(grams);if(!(g>0)||!state.mealNames.includes(meal))return;const x=g/100,e={id:uid(),name:f.n,g,servingG:f.servingG,source:f.s,portions:clone(f.portions||{})};ALL_NUTRIENT_KEYS.forEach(k=>e[k]=f[k]*x);ensureDay().meals[meal].push(e);rememberRecent(f);save();renderAll()};
+addFoodToMeal=function(food,meal,grams,unit="g"){const f=normalizeFood(food),g=Number(grams);if(!(g>0)||!state.mealNames.includes(meal))return;const x=g/100,e={id:uid(),name:f.n,g,unit:unit==="ml"?"ml":"g",servingG:f.servingG,source:f.s,portions:clone(f.portions||{})};ALL_NUTRIENT_KEYS.forEach(k=>e[k]=f[k]*x);ensureDay().meals[meal].push(e);rememberRecent(f);save();renderAll()};
 
 // IndexedDB media
 let mediaDBPromise=null;
@@ -1664,7 +1664,7 @@ function addFoodToPlan(food,meal,grams){const f=normalizeFood(food),g=Number(gra
 const baseOpenFood=openFood;
 openFood=function(meal){foodAddContext={type:"day"};baseOpenFood(meal)};
 window.openPlannerFood=m=>{foodAddContext={type:"plan",meal:m,date:localDateKey(plannerDate)};baseOpenFood(m);foodAddContext={type:"plan",meal:m,date:localDateKey(plannerDate)}};
-saveSelectedFood.onclick=()=>{if(!selectedFood)return;const mode=portionMode.value,amount=Number(foodAmount.value);if(!(amount>0))return toast("Quantidade inválida.");const known=portionWeight(selectedFood,mode),grams=(mode==="g"||mode==="ml")?amount:mode==="serving"?amount*selectedFood.servingG:amount*Number(portionEquivalent.value||known||0);if(!(grams>0))return toast("Informe o equivalente em gramas.");if(foodAddContext.type==="plan"){plannerDate=dateObj(foodAddContext.date);addFoodToPlan(selectedFood,foodAddContext.meal||foodMeal.value,grams)}else addFoodToMeal(selectedFood,foodMeal.value,grams);closeFoodModal()};
+saveSelectedFood.onclick=()=>{if(!selectedFood)return;const mode=portionMode.value,amount=Number(foodAmount.value);if(!(amount>0))return toast("Quantidade inválida.");const known=portionWeight(selectedFood,mode),grams=(mode==="g"||mode==="ml")?amount:mode==="serving"?amount*selectedFood.servingG:amount*Number(portionEquivalent.value||known||0);if(!(grams>0))return toast("Informe o equivalente em gramas.");if(foodAddContext.type==="plan"){plannerDate=dateObj(foodAddContext.date);addFoodToPlan(selectedFood,foodAddContext.meal||foodMeal.value,grams)}else addFoodToMeal(selectedFood,foodMeal.value,grams,mode==="ml"?"ml":"g");closeFoodModal()};
 function weekStart(d){const x=new Date(d);x.setHours(12,0,0,0);const day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);return x}
 function renderPlanner(){
   const page=document.getElementById("plannerPage");if(!page)return;
@@ -2092,58 +2092,120 @@ function renderGlobalSearch(){const q=globalSearchInput.value,r=globalResults(q)
 menuGlobalSearch.onclick=()=>{menuModal.classList.remove("open");globalSearchInput.value="";renderGlobalSearch();openModal("globalSearchModal");setTimeout(()=>globalSearchInput.focus(),100)};
 globalSearchInput.oninput=renderGlobalSearch;
 
-// ---------- Pacote / embalagem ----------
+// ---------- Quantidade consumida em g / ml ----------
+function parseQuantityValue(value){
+  let s=String(value??"").trim().replace(/\s+/g,"");
+  if(!s)return 0;
+
+  // Aceita formatos comuns no Brasil:
+  // 1000 | 1000,5 | 1.000 | 1.000,5
+  if(/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)){
+    s=s.replace(/\./g,"").replace(",",".");
+  }else if(s.includes(",")&&s.includes(".")){
+    s=s.replace(/\./g,"").replace(",",".");
+  }else{
+    s=s.replace(",",".");
+  }
+
+  const n=Number(s);
+  return Number.isFinite(n)?n:0;
+}
+
 const v12BarcodeLookup=lookupBarcode;
 lookupBarcode=async function(code){
   await v12BarcodeLookup(code);
-  const confirmBtn=document.getElementById("confirmBarcodeReview");if(!confirmBtn||!barcodeReviewFood)return;
-  const box=confirmBtn.parentElement,extra=document.createElement("div");extra.innerHTML=`
-    <label>Quantidade total da embalagem</label>
-    <div class="quick-grid">
-      <div>
-        <label style="margin-top:0">Gramas (g)</label>
-        <input id="brPackageWeight" type="number" min=".1" step=".1" inputmode="decimal" placeholder="Ex.: 1000">
+
+  const confirmBtn=document.getElementById("confirmBarcodeReview");
+  if(!confirmBtn||!barcodeReviewFood)return;
+
+  // Deixa claro que o botão original usa a porção do rótulo.
+  confirmBtn.textContent="Usar porção do rótulo";
+
+  const extra=document.createElement("div");
+  extra.innerHTML=`
+    <div class="selected" style="margin-top:12px">
+      <b>Quanto você consumiu?</b>
+      <p class="note" style="margin-top:5px">
+        Informe somente um dos campos. Ex.: um copo de leite pode ser 200 ml ou 250 ml.
+      </p>
+
+      <div class="quick-grid" style="margin-top:10px">
+        <div>
+          <label style="margin-top:0">Gramas (g)</label>
+          <input id="brConsumedG" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex.: 150">
+        </div>
+        <div>
+          <label style="margin-top:0">Mililitros (ml)</label>
+          <input id="brConsumedMl" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex.: 250">
+        </div>
       </div>
-      <div>
-        <label style="margin-top:0">Mililitros (ml)</label>
-        <input id="brPackageVolume" type="number" min=".1" step=".1" inputmode="decimal" placeholder="Ex.: 1000">
-      </div>
-    </div>
-    <p class="note" style="margin-top:8px"><b>Conversões rápidas:</b> 1 kg = 1000 g • 1 L = 1000 ml</p>
-    <div class="package-fractions">
-      <button class="chip" data-pack-frac=".25">¼ pacote</button>
-      <button class="chip" data-pack-frac=".5">½ pacote</button>
-      <button class="chip" data-pack-frac=".75">¾ pacote</button>
-      <button class="chip" data-pack-frac="1">1 pacote</button>
-    </div>
-    <p class="note">Opcional. Preencha <b>gramas ou ml</b> e toque na fração consumida.</p>`;
+
+      <p class="note" style="margin-top:8px">
+        <b>Conversões rápidas:</b> 1 kg = 1000 g • 1 L = 1000 ml
+      </p>
+
+      <button class="btn btn-primary" id="useExactBarcodeAmount" type="button">
+        ✓ Adicionar esta quantidade
+      </button>
+    </div>`;
+
   confirmBtn.insertAdjacentElement("beforebegin",extra);
 
-  const packageWeight=extra.querySelector("#brPackageWeight");
-  const packageVolume=extra.querySelector("#brPackageVolume");
+  const consumedG=extra.querySelector("#brConsumedG");
+  const consumedMl=extra.querySelector("#brConsumedMl");
 
-  packageWeight.addEventListener("input",()=>{if(packageWeight.value)packageVolume.value=""});
-  packageVolume.addEventListener("input",()=>{if(packageVolume.value)packageWeight.value=""});
+  consumedG.addEventListener("input",()=>{
+    if(consumedG.value.trim())consumedMl.value="";
+  });
 
-  extra.querySelectorAll("[data-pack-frac]").forEach(b=>b.onclick=()=>{
-    const totalG=Number(packageWeight.value);
-    const totalMl=Number(packageVolume.value);
-    if(!(totalG>0)&&!(totalMl>0))return toast("Informe o total da embalagem em g ou ml.");
+  consumedMl.addEventListener("input",()=>{
+    if(consumedMl.value.trim())consumedG.value="";
+  });
 
-    const unit=totalMl>0?"ml":"g";
-    const total=totalMl>0?totalMl:totalG;
-    const amount=total*Number(b.dataset.packFrac);
-    const serv=Number(brServing.value)||100,k=Number(brK.value)||0;
-    const f={...barcodeReviewFood,servingG:serv,servingK:k,servingP:Number(brP.value)||0,servingC:Number(brC.value)||0,servingF:Number(brF.value)||0,k:k*100/serv,p:(Number(brP.value)||0)*100/serv,c:(Number(brC.value)||0)*100/serv,f:(Number(brF.value)||0)*100/serv};
+  extra.querySelector("#useExactBarcodeAmount").onclick=()=>{
+    const g=parseQuantityValue(consumedG.value);
+    const ml=parseQuantityValue(consumedMl.value);
+
+    if(!(g>0)&&!(ml>0)){
+      return toast("Informe a quantidade consumida em g ou ml.");
+    }
+
+    const unit=ml>0?"ml":"g";
+    const amount=ml>0?ml:g;
+
+    // Usa os valores atualmente visíveis na revisão do produto.
+    const serv=Number(brServing.value)||100;
+    const k=Number(brK.value)||0;
+    const f={
+      ...barcodeReviewFood,
+      servingG:serv,
+      servingK:k,
+      servingP:Number(brP.value)||0,
+      servingC:Number(brC.value)||0,
+      servingF:Number(brF.value)||0,
+      k:k*100/serv,
+      p:(Number(brP.value)||0)*100/serv,
+      c:(Number(brC.value)||0)*100/serv,
+      f:(Number(brF.value)||0)*100/serv
+    };
+
+    const targetMeal=(foodAddContext?.meal||foodMeal?.value||state.mealNames[0]);
 
     closeModal("scannerModal");
     stopScanner();
-    openFood(state.mealNames[0]);
-    selectFood(f);
-    portionMode.value=unit;
-    foodAmount.value=Number(amount.toFixed(1));
-    updateServingHint();
-  })
+
+    // Quantidade exata em g/ml: adiciona direto para não voltar
+    // automaticamente para "Porção/unidade".
+    if(foodAddContext?.type==="plan"){
+      plannerDate=dateObj(foodAddContext.date);
+      addFoodToPlan(f,targetMeal,amount);
+      renderPlanner();
+    }else{
+      addFoodToMeal(f,targetMeal,amount,unit);
+    }
+
+    toast(`${fmt(amount,Number.isInteger(amount)?0:1)} ${unit} adicionados.`);
+  };
 };
 
 // ---------- Tendência / projeção de peso ----------
