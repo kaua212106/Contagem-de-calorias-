@@ -71,7 +71,7 @@ body.dark .plan-day,body.dark .plan-stat,body.dark .insight,body.dark body.dark 
 .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.compare-col{background:#f7f7fb;border-radius:15px;padding:12px}.compare-col h3{text-align:center;margin-bottom:8px}.compare-row{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #e5e7eb;font-size:12px}.compare-delta{text-align:center;padding:10px;border-radius:12px;background:#eef2ff;margin-top:10px;font-size:12px}
 .global-result{padding:11px;border:1px solid #e5e7eb;border-radius:13px;margin:7px 0;display:flex;justify-content:space-between;gap:10px;align-items:center}.global-result button{width:auto;margin:0;padding:8px 10px}.global-result small{color:#777;display:block;margin-top:3px}
 .trash-item{padding:11px 0;border-bottom:1px solid #eee;display:flex;justify-content:space-between;gap:10px;align-items:center}.trash-actions{display:flex;gap:6px}.trash-actions button{width:auto;margin:0;padding:7px 9px;font-size:11px}
-.package-fractions{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}.package-fractions button{margin:0;padding:9px 4px;font-size:12px}
+.package-fractions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px;width:100%;max-width:100%}.package-fractions button{width:100%!important;min-width:0!important;white-space:normal!important;margin:0!important;text-align:center;padding:10px 6px!important}
 
 .data-health{padding:11px;border-radius:13px;background:#ecfdf5}.data-health.warn{background:#fff7ed}.data-health b{display:block;margin-bottom:3px}
 .search-highlight{background:#fff3a3;border-radius:4px;padding:0 2px}
@@ -744,7 +744,7 @@ body.dark .assistant-macro b{color:#f4f6fb}
     <button class="btn btn-green" id="importBtn">📤 Importar backup</button>
     <input id="importFile" type="file" accept=".json,application/json" class="hidden">
     <button class="btn btn-purple" id="restoreBackupBtn">🕘 Restaurar backup automático local</button>
-    <div class="selected" style="margin-top:12px"><b>☁️ Sincronização em nuvem</b><p class="note">O app está preparado para backup completo, mas sincronização real exige um servidor/conta. Nenhum servidor falso é usado.</p></div>
+    <div class="selected package-total-box" style="margin-top:12px;max-width:100%;overflow:hidden"><b>☁️ Sincronização em nuvem</b><p class="note">O app está preparado para backup completo, mas sincronização real exige um servidor/conta. Nenhum servidor falso é usado.</p></div>
     <button class="btn btn-red" id="clearBtn">🗑️ Apagar todos os dados</button>
   </section>
 </main>
@@ -2157,7 +2157,7 @@ lookupBarcode=async function(code){
         </div>
       </div>
 
-      <label>Unidades na embalagem</label>
+      <label>Unidades na embalagem <span class="note">(opcional)</span></label>
       <input id="brPackageUnits" type="number" min="1" step="1" inputmode="numeric" placeholder="Ex.: 6">
 
       <p class="note" style="margin-top:8px">
@@ -2200,7 +2200,7 @@ lookupBarcode=async function(code){
     }else if(autoUnitG>0){
       unitHint.innerHTML=`O rótulo no banco parece informar 1 unidade ≈ <b>${fmt(autoUnitG,1)} g</b>.`;
     }else{
-      unitHint.textContent="Você pode preencher g, ml ou apenas a quantidade de unidades.";
+      unitHint.textContent="Você pode preencher somente g, somente ml ou, se quiser, informar também a quantidade de unidades.";
     }
   }
 
