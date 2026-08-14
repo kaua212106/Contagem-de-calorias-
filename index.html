@@ -787,7 +787,7 @@ body.dark .assistant-macro b{color:#f4f6fb}
     <div class="results" id="foodResults"></div>
     <div id="selectedFoodBox" class="selected hidden"></div>
     <div id="foodAmountBox" class="hidden">
-      <label>Forma de registrar</label><select id="portionMode"><option value="g">Gramas</option><option value="serving">Porção/unidade</option><option value="slice">Fatia</option><option value="spoon">Colher</option><option value="cup">Copo/xícara</option><option value="ladle">Concha</option><option value="package">Pacote</option><option value="ml">ml (mesmo cálculo por 100)</option></select>
+      <label>Forma de registrar</label><select id="portionMode"><option value="g">Gramas</option><option value="ml">Mililitros (ml)</option><option value="unit">Unidade</option><option value="serving">Porção</option><option value="slice">Fatia</option><option value="spoon">Colher</option><option value="cup">Copo/xícara</option><option value="ladle">Concha</option><option value="package">Pacote</option></select>
       <label>Quantidade</label><input id="foodAmount" type="number" min="0.1" step="0.1" value="100">
       <div id="portionEquivalentBox" class="hidden"><label>Equivalente de 1 unidade em gramas</label><input id="portionEquivalent" type="number" min="0.1" step="0.1" value="30"></div>
       <div id="servingHint" class="note"></div>
@@ -1244,6 +1244,7 @@ function foodFromOFFProduct(p,code=""){
     servingG,servingK:k.perServing,servingP:pr.perServing,servingC:ca.perServing,servingF:fa.perServing,
     preferredMode:servingG>0&&servingG!==100?"serving":"g",nutritionBasis:basis,
     offRawK100:k.rawPer100,
+    offServingSize:String(p.serving_size||""),
     s:"Open Food Facts"+(p.brands?" • "+p.brands:"")+(code||p.code?" • "+(code||p.code):"")
   };
 }
@@ -1622,7 +1623,7 @@ BASE_FOODS.push(
 calcDayTotals=function(d=ensureDay()){const t={};ALL_NUTRIENT_KEYS.forEach(k=>t[k]=0);Object.values(d.meals||{}).forEach(arr=>(arr||[]).forEach(x=>ALL_NUTRIENT_KEYS.forEach(n=>t[n]+=Number(x[n]||0))));return t};
 normalizeFood=function(f){const o={n:f.n||f.name||"Alimento",servingG:Number(f.servingG||100),servingK:Number.isFinite(Number(f.servingK))?Number(f.servingK):null,servingP:Number.isFinite(Number(f.servingP))?Number(f.servingP):null,servingC:Number.isFinite(Number(f.servingC))?Number(f.servingC):null,servingF:Number.isFinite(Number(f.servingF))?Number(f.servingF):null,preferredMode:f.preferredMode||"g",nutritionBasis:f.nutritionBasis||"",s:f.s||f.source||"",portions:clone(f.portions||{})};ALL_NUTRIENT_KEYS.forEach(k=>o[k]=Number(f[k]||0));return o};
 foodFromEntry=function(x){const factor=100/Math.max(.01,Number(x.g)||100),o={n:x.name,servingG:x.servingG||100,s:x.source||"Registro",portions:clone(x.portions||{})};ALL_NUTRIENT_KEYS.forEach(k=>o[k]=Number(x[k]||0)*factor);return o};
-addFoodToMeal=function(food,meal,grams,unit="g"){const f=normalizeFood(food),g=Number(grams);if(!(g>0)||!state.mealNames.includes(meal))return;const x=g/100,e={id:uid(),name:f.n,g,unit:unit==="ml"?"ml":"g",servingG:f.servingG,source:f.s,portions:clone(f.portions||{})};ALL_NUTRIENT_KEYS.forEach(k=>e[k]=f[k]*x);ensureDay().meals[meal].push(e);rememberRecent(f);save();renderAll()};
+addFoodToMeal=function(food,meal,grams,unit="g"){const f=normalizeFood(food),g=Number(grams);if(!(g>0)||!state.mealNames.includes(meal))return;const x=g/100,e={id:uid(),name:f.n,g,unit:unit==="ml"?"ml":unit==="un"?"un":"g",displayAmount:unit==="un"?Number(food._usedUnits||0):null,servingG:f.servingG,source:f.s,portions:clone(f.portions||{})};ALL_NUTRIENT_KEYS.forEach(k=>e[k]=f[k]*x);ensureDay().meals[meal].push(e);rememberRecent(f);save();renderAll()};
 
 // IndexedDB media
 let mediaDBPromise=null;
@@ -1653,8 +1654,35 @@ function levenshtein(a,b){a=normSearch(a);b=normSearch(b);const m=Array.from({le
 searchLocal=function(q){const nq=normSearch(q),all=[...state.favorites.map(x=>({...x,_rank:0})),...state.recentFoods.map(x=>({...x,_rank:1})),...state.customFoods.map(x=>({...x,_rank:2})),...BASE_FOODS.map(x=>({...x,_rank:3}))],seen=new Set(),scored=[];for(const f of all){const fk=foodKey(f);if(seen.has(fk))continue;seen.add(fk);const name=normSearch(f.n);let score=999;if(!nq)score=f._rank*10;else if(name===nq)score=0;else if(name.startsWith(nq))score=2;else if(name.includes(nq))score=5;else{const words=name.split(/\s+/),dist=Math.min(...words.map(w=>levenshtein(w,nq)));if(dist<=Math.max(2,Math.floor(nq.length/3)))score=10+dist}if(score<999)scored.push({...f,_score:score+f._rank})}return scored.sort((a,b)=>a._score-b._score).slice(0,40)};
 
 // Household portions
-function portionWeight(food,mode){const f=normalizeFood(food),p=f.portions||{};if(mode==="serving")return f.servingG||100;if(mode==="g"||mode==="ml")return 1;return Number(p[mode]||0)}
-updateServingHint=function(){if(!selectedFood)return;const mode=document.getElementById("portionMode").value,known=portionWeight(selectedFood,mode),custom=!["g","ml","serving"].includes(mode);document.getElementById("portionEquivalentBox").classList.toggle("hidden",!custom);const labels={slice:"fatia",spoon:"colher",cup:"copo/xícara",ladle:"concha",package:"pacote"};if(custom&&known>0)document.getElementById("portionEquivalent").value=known;document.getElementById("servingHint").textContent=mode==="serving"?`1 porção/unidade = ${fmt(selectedFood.servingG,1)} g`:custom?(known>0?`1 ${labels[mode]} = ${fmt(known,1)} g. Você pode ajustar.`:`Informe quantos gramas equivalem a 1 ${labels[mode]}.`):mode==="ml"?"Para líquidos, confirme se o rótulo usa 100 ml.":""};
+function offServingLooksLikeUnit(food){
+  return /(^|\b)(1\s*)?(unidade|unid\.?|unit|piece|peça)(\b|\s|\()/i.test(String(food?.offServingSize||""));
+}
+function portionWeight(food,mode){
+  const f=normalizeFood(food),p=f.portions||{};
+  if(mode==="serving")return f.servingG||100;
+  if(mode==="unit"){
+    if(Number(f.unitG)>0)return Number(f.unitG);
+    if(Number(p.unit)>0)return Number(p.unit);
+    if(offServingLooksLikeUnit(food)&&Number(f.servingG)>0)return Number(f.servingG);
+    return 0;
+  }
+  if(mode==="g"||mode==="ml")return 1;
+  return Number(p[mode]||0);
+}
+updateServingHint=function(){
+  if(!selectedFood)return;
+  const mode=document.getElementById("portionMode").value,
+        known=portionWeight(selectedFood,mode),
+        custom=!["g","ml","serving"].includes(mode);
+  document.getElementById("portionEquivalentBox").classList.toggle("hidden",!custom);
+  const labels={unit:"unidade",slice:"fatia",spoon:"colher",cup:"copo/xícara",ladle:"concha",package:"pacote"};
+  if(custom&&known>0)document.getElementById("portionEquivalent").value=known;
+  document.getElementById("servingHint").textContent=
+    mode==="serving"?`1 porção = ${fmt(selectedFood.servingG,1)} g`:
+    mode==="unit"?(known>0?`1 unidade = ${fmt(known,1)} g. Detectado/calculado automaticamente.`:"O código não informou o peso de 1 unidade. Informe o equivalente para calcular corretamente."):
+    custom?(known>0?`1 ${labels[mode]} = ${fmt(known,1)} g. Você pode ajustar.`:`Informe quantos gramas equivalem a 1 ${labels[mode]}.`):
+    mode==="ml"?"Para líquidos, o app usa a referência nutricional disponível para 100 ml/g. Confira o rótulo.":"";
+};
 
 // Planner
 let plannerDate=new Date();plannerDate.setHours(12,0,0,0);let foodAddContext={type:"day"};
@@ -1664,7 +1692,7 @@ function addFoodToPlan(food,meal,grams){const f=normalizeFood(food),g=Number(gra
 const baseOpenFood=openFood;
 openFood=function(meal){foodAddContext={type:"day"};baseOpenFood(meal)};
 window.openPlannerFood=m=>{foodAddContext={type:"plan",meal:m,date:localDateKey(plannerDate)};baseOpenFood(m);foodAddContext={type:"plan",meal:m,date:localDateKey(plannerDate)}};
-saveSelectedFood.onclick=()=>{if(!selectedFood)return;const mode=portionMode.value,amount=Number(foodAmount.value);if(!(amount>0))return toast("Quantidade inválida.");const known=portionWeight(selectedFood,mode),grams=(mode==="g"||mode==="ml")?amount:mode==="serving"?amount*selectedFood.servingG:amount*Number(portionEquivalent.value||known||0);if(!(grams>0))return toast("Informe o equivalente em gramas.");if(foodAddContext.type==="plan"){plannerDate=dateObj(foodAddContext.date);addFoodToPlan(selectedFood,foodAddContext.meal||foodMeal.value,grams)}else addFoodToMeal(selectedFood,foodMeal.value,grams,mode==="ml"?"ml":"g");closeFoodModal()};
+saveSelectedFood.onclick=()=>{if(!selectedFood)return;const mode=portionMode.value,amount=Number(foodAmount.value);if(!(amount>0))return toast("Quantidade inválida.");const known=portionWeight(selectedFood,mode),grams=(mode==="g"||mode==="ml")?amount:mode==="serving"?amount*selectedFood.servingG:amount*Number(portionEquivalent.value||known||0);if(!(grams>0))return toast(mode==="unit"?"Não sei o peso de 1 unidade. Informe o equivalente em gramas.":"Informe o equivalente em gramas.");if(foodAddContext.type==="plan"){plannerDate=dateObj(foodAddContext.date);addFoodToPlan(selectedFood,foodAddContext.meal||foodMeal.value,grams)}else{if(mode==="unit")selectedFood._usedUnits=amount;addFoodToMeal(selectedFood,foodMeal.value,grams,mode==="ml"?"ml":mode==="unit"?"un":"g")}closeFoodModal()};
 function weekStart(d){const x=new Date(d);x.setHours(12,0,0,0);const day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);return x}
 function renderPlanner(){
   const page=document.getElementById("plannerPage");if(!page)return;
@@ -2092,21 +2120,13 @@ function renderGlobalSearch(){const q=globalSearchInput.value,r=globalResults(q)
 menuGlobalSearch.onclick=()=>{menuModal.classList.remove("open");globalSearchInput.value="";renderGlobalSearch();openModal("globalSearchModal");setTimeout(()=>globalSearchInput.focus(),100)};
 globalSearchInput.oninput=renderGlobalSearch;
 
-// ---------- Quantidade consumida em g / ml ----------
-function parseQuantityValue(value){
+// ---------- Quantidade total da embalagem ----------
+function parsePackageNumber(value){
   let s=String(value??"").trim().replace(/\s+/g,"");
   if(!s)return 0;
-
-  // Aceita formatos comuns no Brasil:
-  // 1000 | 1000,5 | 1.000 | 1.000,5
-  if(/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)){
-    s=s.replace(/\./g,"").replace(",",".");
-  }else if(s.includes(",")&&s.includes(".")){
-    s=s.replace(/\./g,"").replace(",",".");
-  }else{
-    s=s.replace(",",".");
-  }
-
+  if(/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s))s=s.replace(/\./g,"").replace(",",".");
+  else if(s.includes(",")&&s.includes("."))s=s.replace(/\./g,"").replace(",",".");
+  else s=s.replace(",",".");
   const n=Number(s);
   return Number.isFinite(n)?n:0;
 }
@@ -2118,64 +2138,86 @@ lookupBarcode=async function(code){
   const confirmBtn=document.getElementById("confirmBarcodeReview");
   if(!confirmBtn||!barcodeReviewFood)return;
 
-  // Deixa claro que o botão original usa a porção do rótulo.
-  confirmBtn.textContent="Usar porção do rótulo";
-
   const extra=document.createElement("div");
   extra.innerHTML=`
     <div class="selected" style="margin-top:12px">
-      <b>Quanto você consumiu?</b>
+      <b>Quantidade total da embalagem</b>
       <p class="note" style="margin-top:5px">
-        Informe somente um dos campos. Ex.: um copo de leite pode ser 200 ml ou 250 ml.
+        Opcional. Informe o total da embalagem para usar ¼, ½, ¾ ou a embalagem inteira.
       </p>
 
       <div class="quick-grid" style="margin-top:10px">
         <div>
           <label style="margin-top:0">Gramas (g)</label>
-          <input id="brConsumedG" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex.: 150">
+          <input id="brPackageWeight" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex.: 1000">
         </div>
         <div>
           <label style="margin-top:0">Mililitros (ml)</label>
-          <input id="brConsumedMl" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex.: 250">
+          <input id="brPackageVolume" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex.: 1000">
         </div>
       </div>
+
+      <label>Unidades na embalagem</label>
+      <input id="brPackageUnits" type="number" min="1" step="1" inputmode="numeric" placeholder="Ex.: 6">
 
       <p class="note" style="margin-top:8px">
         <b>Conversões rápidas:</b> 1 kg = 1000 g • 1 L = 1000 ml
       </p>
 
-      <button class="btn btn-primary" id="useExactBarcodeAmount" type="button">
-        ✓ Adicionar esta quantidade
-      </button>
+      <div class="package-fractions">
+        <button class="chip" data-pack-frac=".25" type="button">¼ embalagem</button>
+        <button class="chip" data-pack-frac=".5" type="button">½ embalagem</button>
+        <button class="chip" data-pack-frac=".75" type="button">¾ embalagem</button>
+        <button class="chip" data-pack-frac="1" type="button">1 embalagem</button>
+      </div>
+
+      <p class="note" id="packageUnitHint" style="margin-top:8px"></p>
     </div>`;
 
   confirmBtn.insertAdjacentElement("beforebegin",extra);
 
-  const consumedG=extra.querySelector("#brConsumedG");
-  const consumedMl=extra.querySelector("#brConsumedMl");
+  const packageWeight=extra.querySelector("#brPackageWeight");
+  const packageVolume=extra.querySelector("#brPackageVolume");
+  const packageUnits=extra.querySelector("#brPackageUnits");
+  const unitHint=extra.querySelector("#packageUnitHint");
 
-  consumedG.addEventListener("input",()=>{
-    if(consumedG.value.trim())consumedMl.value="";
-  });
+  const autoUnitG=offServingLooksLikeUnit(barcodeReviewFood) ? Number(barcodeReviewFood.servingG||0) : 0;
 
-  consumedMl.addEventListener("input",()=>{
-    if(consumedMl.value.trim())consumedG.value="";
-  });
+  function refreshPackageHint(){
+    const g=parsePackageNumber(packageWeight.value);
+    const ml=parsePackageNumber(packageVolume.value);
+    const units=parsePackageNumber(packageUnits.value);
 
-  extra.querySelector("#useExactBarcodeAmount").onclick=()=>{
-    const g=parseQuantityValue(consumedG.value);
-    const ml=parseQuantityValue(consumedMl.value);
+    let unitEquivalent=0;
+    if(units>0&&g>0)unitEquivalent=g/units;
+    else if(units>0&&ml>0)unitEquivalent=ml/units;
+    else if(units>0&&autoUnitG>0)unitEquivalent=autoUnitG;
 
-    if(!(g>0)&&!(ml>0)){
-      return toast("Informe a quantidade consumida em g ou ml.");
+    if(units>0&&unitEquivalent>0){
+      unitHint.innerHTML=`✓ 1 unidade será calculada como aproximadamente <b>${fmt(unitEquivalent,1)} ${ml>0?"ml":"g"}</b>.`;
+    }else if(units>0){
+      unitHint.textContent="O banco não informou o peso de 1 unidade. Você pode usar a contagem de unidades, mas para calcular calorias por unidade será necessário informar o equivalente depois.";
+    }else if(autoUnitG>0){
+      unitHint.innerHTML=`O rótulo no banco parece informar 1 unidade ≈ <b>${fmt(autoUnitG,1)} g</b>.`;
+    }else{
+      unitHint.textContent="Você pode preencher g, ml ou apenas a quantidade de unidades.";
+    }
+  }
+
+  [packageWeight,packageVolume,packageUnits].forEach(el=>el.addEventListener("input",refreshPackageHint));
+  refreshPackageHint();
+
+  extra.querySelectorAll("[data-pack-frac]").forEach(btn=>btn.onclick=()=>{
+    const frac=Number(btn.dataset.packFrac);
+    const totalG=parsePackageNumber(packageWeight.value);
+    const totalMl=parsePackageNumber(packageVolume.value);
+    const totalUnits=parsePackageNumber(packageUnits.value);
+
+    if(!(totalG>0)&&!(totalMl>0)&&!(totalUnits>0)){
+      return toast("Informe o total da embalagem em g, ml ou unidades.");
     }
 
-    const unit=ml>0?"ml":"g";
-    const amount=ml>0?ml:g;
-
-    // Usa os valores atualmente visíveis na revisão do produto.
-    const serv=Number(brServing.value)||100;
-    const k=Number(brK.value)||0;
+    const serv=Number(brServing.value)||100,k=Number(brK.value)||0;
     const f={
       ...barcodeReviewFood,
       servingG:serv,
@@ -2189,23 +2231,35 @@ lookupBarcode=async function(code){
       f:(Number(brF.value)||0)*100/serv
     };
 
-    const targetMeal=(foodAddContext?.meal||foodMeal?.value||state.mealNames[0]);
+    let mode="g", amount=0, unitEquivalent=0;
+
+    if(totalUnits>0){
+      amount=totalUnits*frac;
+      if(totalG>0)unitEquivalent=totalG/totalUnits;
+      else if(totalMl>0)unitEquivalent=totalMl/totalUnits;
+      else if(autoUnitG>0)unitEquivalent=autoUnitG;
+
+      f.unitG=unitEquivalent||0;
+      f.portions={...(f.portions||{}),unit:unitEquivalent||0};
+      mode="unit";
+    }else if(totalMl>0){
+      amount=totalMl*frac;
+      mode="ml";
+    }else{
+      amount=totalG*frac;
+      mode="g";
+    }
 
     closeModal("scannerModal");
     stopScanner();
+    openFood(state.mealNames[0]);
+    selectFood(f);
 
-    // Quantidade exata em g/ml: adiciona direto para não voltar
-    // automaticamente para "Porção/unidade".
-    if(foodAddContext?.type==="plan"){
-      plannerDate=dateObj(foodAddContext.date);
-      addFoodToPlan(f,targetMeal,amount);
-      renderPlanner();
-    }else{
-      addFoodToMeal(f,targetMeal,amount,unit);
-    }
-
-    toast(`${fmt(amount,Number.isInteger(amount)?0:1)} ${unit} adicionados.`);
-  };
+    portionMode.value=mode;
+    foodAmount.value=String(Number(amount.toFixed(2)));
+    if(mode==="unit"&&unitEquivalent>0)portionEquivalent.value=String(Number(unitEquivalent.toFixed(2)));
+    updateServingHint();
+  });
 };
 
 // ---------- Tendência / projeção de peso ----------
