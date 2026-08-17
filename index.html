@@ -6,6 +6,17 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#667eea">
+   <style>
+html.central-auth-lock body{
+  visibility:hidden !important;
+}
+</style>
+
+<script>
+document.documentElement.classList.add("central-auth-lock");
+</script>
+
+<script src="auth-guard-v1.js"></script>
 <link rel="manifest" href="manifest.json">
 <title>Minhas Calorias Completo</title>
 <style>
