@@ -4,7 +4,8 @@ const CACHE_PREFIX = 'contador-de-calorias-';
 const OFFLINE_FILES = [
   './index.html',
   './manifest.json',
-  './icone.png'
+  './icone.png',
+  './auth-guard-v1.js'
 ];
 
 // Instala e busca os arquivos direto da rede, evitando reutilizar
