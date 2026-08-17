@@ -40,6 +40,11 @@ label{display:block;margin:15px 0 7px;font-weight:bold;color:#222}input,select,t
 .switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #eee}.switch-row label{margin:0;font-weight:normal}.home-card-hidden{display:none!important}
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#111;color:#fff;padding:11px 15px;border-radius:12px;z-index:9999;opacity:0;pointer-events:none;transition:.25s;max-width:88%;text-align:center}.toast.show{opacity:1}
 .report-box{line-height:1.55}.report-kpis{display:grid;grid-template-columns:1fr 1fr;gap:9px}.report-kpi{background:#f5f6fb;border-radius:12px;padding:12px;text-align:center}.report-kpi b{display:block;font-size:20px}
+.bmi-result-box{padding:15px;border-radius:16px;background:#f7f8fc;border:1px solid #e7eaf0;text-align:center}
+.bmi-result-box .bmi-number{font-size:34px;font-weight:850;letter-spacing:-1px;color:var(--primary);display:block}
+.bmi-result-box .bmi-class{display:inline-block;margin-top:6px;padding:6px 10px;border-radius:999px;background:#eef0ff;color:var(--primary);font-size:12px;font-weight:800}
+body.dark .bmi-result-box{background:#151a24;border-color:#222a39}
+
 body.dark{color:#fff}body.dark .card,body.dark .modal-box,body.dark .menu-box{background:#000;color:#fff}body.dark .card h2,body.dark .card h3,body.dark label,body.dark .modal-title h2,body.dark .menu-box h2{color:#fff}body.dark .contador{background:#000}body.dark .botao-menu,body.dark .botao-mais{background:#000;color:#fff}body.dark input,body.dark select,body.dark textarea{background:#111;color:#fff;border-color:#444}body.dark .tabs{background:#171717}body.dark .tab.active{background:#000}body.dark .food-row,body.dark .macro,body.dark .nutrient,body.dark .calendar-day,body.dark .report-kpi{background:#111;color:#fff}body.dark .meal,body.dark .recipe-card,body.dark .saved-card{border-color:#333}body.dark .progress,body.dark .mini-progress{background:#272727}body.dark .water-ring:after{background:#000}body.dark .water-log,body.dark .stat-line,body.dark .switch-row{border-color:#292929}body.dark .svg-chart{background:#111}body.dark .bottom{background:rgba(0,0,0,.97)}body.dark .nav{color:#aaa}body.dark .nav.active{color:#8b9cf7}body.dark .muted,body.dark .note,body.dark .food-sub,body.dark .meal-total,body.dark .result small{color:#aaa}
 
 /* Nutrição 2.0 */
@@ -693,6 +698,31 @@ body.dark .assistant-macro b{color:#f4f6fb}
   <section class="card">
     <div class="section-title"><h2>👤 Perfil e metas</h2><button class="chip" id="editProfileBtn">Editar</button></div>
     <div id="profileSummary"></div>
+  </section>
+  <section class="card">
+    <div class="section-title">
+      <h2>⚖️ Calculadora de IMC</h2>
+      <button class="chip" id="bmiUseProfileBtn" type="button">Usar perfil</button>
+    </div>
+    <p class="note">Calcule seu IMC usando peso e altura. Os dados podem ser preenchidos automaticamente pelo Perfil.</p>
+
+    <div class="quick-grid">
+      <div>
+        <label>Peso (kg)</label>
+        <input id="bmiWeight" type="number" min="20" max="400" step="0.1" inputmode="decimal" placeholder="Ex.: 70">
+      </div>
+      <div>
+        <label>Altura (cm)</label>
+        <input id="bmiHeight" type="number" min="100" max="250" step="0.1" inputmode="decimal" placeholder="Ex.: 175">
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="bmiCalculateBtn" type="button">🧮 Calcular IMC</button>
+    <div id="bmiResult" class="hidden" style="margin-top:12px"></div>
+
+    <p class="note" style="margin-top:12px">
+      O IMC é um indicador de triagem geral. Para menores de 20 anos, as faixas de adultos não são usadas da mesma forma.
+    </p>
   </section>
   <section class="card">
     <div class="section-title"><h2>🎯 Metas por refeição</h2><button class="chip" id="saveMealTargets">Salvar</button></div>
@@ -2520,6 +2550,90 @@ async function cleanupUnusedMediaV15(){
   }catch(e){}
 }
 cleanupUnusedMediaV15();
+
+
+// ============================================================
+// CALCULADORA DE IMC
+// ============================================================
+function syncBMIFromProfile(showMessage=false){
+  const w=Number(state.profile.weight)||0;
+  const h=Number(state.profile.height)||0;
+
+  if(w>0)bmiWeight.value=w;
+  if(h>0)bmiHeight.value=h;
+
+  if(showMessage){
+    if(w>0&&h>0)toast("Peso e altura carregados do Perfil.");
+    else toast("Preencha peso e altura no Perfil ou informe manualmente.");
+  }
+}
+
+function bmiAdultClassification(bmi){
+  if(bmi<18.5)return "Baixo peso";
+  if(bmi<25)return "Faixa de peso saudável";
+  if(bmi<30)return "Sobrepeso";
+  if(bmi<35)return "Obesidade — classe 1";
+  if(bmi<40)return "Obesidade — classe 2";
+  return "Obesidade — classe 3";
+}
+
+function calculateBMI(){
+  const weight=Number(bmiWeight.value);
+  const heightCm=Number(bmiHeight.value);
+
+  if(!(weight>0&&heightCm>0)){
+    toast("Informe peso e altura para calcular o IMC.");
+    return;
+  }
+
+  const heightM=heightCm/100;
+  const bmi=weight/(heightM*heightM);
+  const age=Number(state.profile.age)||0;
+
+  let classification="";
+  let extra="";
+
+  if(age>0&&age<20){
+    classification="Resultado numérico";
+    extra="As faixas de classificação para adultos não são aplicadas aqui porque o Perfil informa idade abaixo de 20 anos.";
+  }else{
+    classification=bmiAdultClassification(bmi);
+    extra=age>=20
+      ?"Classificação de referência para adultos."
+      :"Classificação geral de referência para adultos. Cadastre sua idade no Perfil para contextualizar o resultado.";
+  }
+
+  bmiResult.classList.remove("hidden");
+  bmiResult.innerHTML=`
+    <div class="bmi-result-box">
+      <span class="note">Seu IMC</span>
+      <span class="bmi-number">${bmi.toFixed(1)}</span>
+      <span class="bmi-class">${esc(classification)}</span>
+      <p class="note" style="margin-top:9px">${esc(extra)}</p>
+    </div>`;
+
+  bmiResult.scrollIntoView({behavior:"smooth",block:"center"});
+}
+
+bmiUseProfileBtn.onclick=()=>{
+  syncBMIFromProfile(true);
+  if(Number(bmiWeight.value)>0&&Number(bmiHeight.value)>0)calculateBMI();
+};
+
+bmiCalculateBtn.onclick=calculateBMI;
+
+[bmiWeight,bmiHeight].forEach(el=>{
+  el.addEventListener("keydown",e=>{
+    if(e.key==="Enter")calculateBMI();
+  });
+});
+
+// Mantém a calculadora sincronizada quando o Perfil é renderizado.
+const renderProfileBeforeBMI=renderProfile;
+renderProfile=function(){
+  renderProfileBeforeBMI();
+  syncBMIFromProfile(false);
+};
 
 // PWA
 if("serviceWorker" in navigator && location.protocol.startsWith("http")){
