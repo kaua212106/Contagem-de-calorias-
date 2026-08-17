@@ -5,7 +5,7 @@ const OFFLINE_FILES = [
   './index.html',
   './manifest.json',
   './icone.png',
-  './auth-guard-v1.js'
+  './auth-guard-v2.js'
 ];
 
 // Instala e busca os arquivos direto da rede, evitando reutilizar
