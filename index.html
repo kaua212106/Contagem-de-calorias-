@@ -532,6 +532,12 @@ body.dark .assistant-components{background:#151a24;border-color:#273043}
 .online-product-result:focus{outline:2px solid var(--primary);outline-offset:2px}
 .online-product-result small{display:block;margin-top:3px}
 
+
+.food-search-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:9px;width:100%}
+.food-search-actions .chip{width:100%;min-width:0;min-height:38px;height:auto;white-space:normal;line-height:1.2;text-align:center;padding:8px 9px;border-radius:14px}
+.food-search-help{display:block;margin-top:7px;line-height:1.4}
+@media(max-width:360px){.food-search-actions{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -845,7 +851,7 @@ body.dark .assistant-components{background:#151a24;border-color:#273043}
     <label>Refeição</label><select id="foodMeal"></select>
     <label>Buscar alimento, favorito, recente ou produto</label>
     <div class="search-row"><input id="foodSearch" placeholder="Ex.: arroz, banana, whey..."><button id="foodSearchBtn">⌕</button></div>
-    <div class="chip-row" style="margin-top:9px"><button type="button" class="chip" id="searchOnlineBtn" title="Pesquisar no Open Food Facts pelo nome e revisar como no código de barras">🌐 Buscar pelo nome</button><small class="note" style="display:block;margin-top:7px">A busca aceita nome, marca e pequenas diferenças de escrita.</small><button type="button" class="chip" id="barcodeBtn">📷 Código de barras</button></div>
+    <div class="food-search-actions"><button type="button" class="chip" id="searchOnlineBtn" title="Pesquisar alimentos locais e produtos do Open Food Facts">🌐 Buscar pelo nome</button><button type="button" class="chip" id="barcodeBtn">📷 Código de barras</button></div><small class="note food-search-help">A lupa e o botão “Buscar pelo nome” pesquisam alimentos salvos e produtos online.</small>
     <div class="results" id="foodResults"></div>
     <div id="selectedFoodBox" class="selected hidden"></div>
     <div id="foodAmountBox" class="hidden">
@@ -1478,17 +1484,11 @@ function onlineProductCode(p){
   return String(p?.code||p?._id||p?.id||"").replace(/\D/g,"");
 }
 
-function unwrapSearchALiciousHit(hit){
-  if(!hit||typeof hit!=="object")return null;
-  return hit._source||hit.source||hit.product||hit.document||hit;
-}
-
 function rememberOnlineProduct(product,forcedCode=""){
   if(!product)return;
   state.onlineProductCatalog=Array.isArray(state.onlineProductCatalog)?state.onlineProductCatalog:[];
   const code=String(forcedCode||onlineProductCode(product)).replace(/\D/g,"");
   if(!code)return;
-
   const entry={
     code,
     product_name:String(product.product_name||product.product_name_pt||product.product_name_en||"").trim(),
@@ -1497,19 +1497,17 @@ function rememberOnlineProduct(product,forcedCode=""){
     rememberedAt:Date.now()
   };
   if(!entry.product_name)return;
-
   const oldIndex=state.onlineProductCatalog.findIndex(x=>String(x.code)===code);
   if(oldIndex>=0)state.onlineProductCatalog.splice(oldIndex,1);
   state.onlineProductCatalog.unshift(entry);
-  state.onlineProductCatalog=state.onlineProductCatalog.slice(0,120);
+  state.onlineProductCatalog=state.onlineProductCatalog.slice(0,150);
   save(false);
 }
 
 function onlineSearchNormalized(s){
   return normSearch(String(s||""))
     .replace(/\b\d+(?:[.,]\d+)?\s*(?:ml|l|litro|litros|g|kg|quilo|quilos|un|unid|unidade|unidades)\b/g," ")
-    .replace(/\s+/g," ")
-    .trim();
+    .replace(/\s+/g," ").trim();
 }
 
 function onlineNameScore(p,q){
@@ -1517,249 +1515,174 @@ function onlineNameScore(p,q){
   const name=onlineSearchNormalized(p.product_name||p.product_name_pt||p.product_name_en||"");
   const brand=onlineSearchNormalized(p.brands||"");
   if(!query||!name)return 0;
-
   if(name===query)return 10000;
   if(`${name} ${brand}`.trim()===query)return 9800;
-  if(name.startsWith(query))return 9000;
-  if(name.includes(query))return 8200;
-
+  if(name.startsWith(query))return 9200;
+  if(name.includes(query))return 8500;
   const terms=query.split(" ").filter(x=>x.length>1);
   const hay=`${name} ${brand}`;
   const matched=terms.filter(t=>hay.includes(t)).length;
   if(!matched)return 0;
-
-  return (matched/terms.length)*6000 + matched*120 - Math.abs(name.length-query.length);
+  return (matched/terms.length)*6500+matched*150-Math.abs(name.length-query.length);
 }
 
 function dedupeAndRankOnlineProducts(products,q){
   const map=new Map();
-  for(const raw of products){
-    const p=unwrapSearchALiciousHit(raw);
-    if(!p)continue;
-
-    const code=onlineProductCode(p);
-    const name=p.product_name||p.product_name_pt||p.product_name_en;
+  for(const p0 of products){
+    if(!p0||typeof p0!=="object")continue;
+    const code=onlineProductCode(p0);
+    const name=p0.product_name||p0.product_name_pt||p0.product_name_en;
     if(!code||!name)continue;
-
-    const normalized={
-      ...p,
-      code,
-      product_name:name,
-      brands:p.brands||"",
-      image_front_small_url:p.image_front_small_url||p.image_small_url||p.image_url||""
-    };
-
-    const existing=map.get(code);
-    if(!existing||onlineNameScore(normalized,q)>onlineNameScore(existing,q)){
-      map.set(code,normalized);
-    }
+    const p={...p0,code,product_name:name,brands:p0.brands||"",image_front_small_url:p0.image_front_small_url||p0.image_small_url||p0.image_url||""};
+    const old=map.get(code);
+    if(!old||onlineNameScore(p,q)>onlineNameScore(old,q))map.set(code,p);
   }
-
   return [...map.values()]
     .map(p=>({p,score:onlineNameScore(p,q)}))
+    .filter(x=>x.score>0)
     .sort((a,b)=>b.score-a.score)
-    .map(x=>x.p)
-    .slice(0,40);
+    .map(x=>x.p).slice(0,40);
 }
 
 function localRememberedNameMatches(q){
-  const arr=Array.isArray(state.onlineProductCatalog)?state.onlineProductCatalog:[];
-  return arr
+  const remembered=Array.isArray(state.onlineProductCatalog)?state.onlineProductCatalog:[];
+  const fromRecent=[...(state.recentFoods||[]),...(state.favorites||[]),...(state.customFoods||[])].map(f=>({
+    code:String(f.code||"").replace(/\D/g,""),
+    product_name:f.n||f.product_name||"",
+    brands:f.brands||"",
+    image_front_small_url:f.image_front_small_url||""
+  })).filter(x=>x.code&&x.product_name);
+  return [...remembered,...fromRecent]
     .map(p=>({p,score:onlineNameScore(p,q)}))
     .filter(x=>x.score>500)
     .sort((a,b)=>b.score-a.score)
-    .map(x=>x.p)
-    .slice(0,20);
+    .map(x=>x.p).slice(0,25);
 }
 
-async function fetchSearchALicious(q){
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),9000);
-  try{
-    const url=`https://search.openfoodfacts.org/search?q=${encodeURIComponent(q)}&page=1&page_size=60`;
-    const r=await fetch(url,{
-      method:"GET",
-      mode:"cors",
-      cache:"no-store",
-      headers:{"Accept":"application/json"},
-      signal:controller.signal
-    });
-    if(!r.ok)throw new Error(`search-a-${r.status}`);
-    const data=await r.json();
-
-    const hits=
-      Array.isArray(data?.hits)?data.hits:
-      Array.isArray(data?.products)?data.products:
-      Array.isArray(data?.results)?data.results:
-      [];
-
-    return hits.map(unwrapSearchALiciousHit).filter(Boolean);
-  }finally{
-    clearTimeout(timer);
-  }
+function searchWords(q){
+  return onlineSearchNormalized(q).split(" ").filter(w=>w.length>=3 && !/^(com|sem|para|por|de|da|do|das|dos|tipo|sabor)$/.test(w));
 }
 
-async function fetchLegacyNameSearch(q){
+function offTagSlug(s){
+  return normSearch(s).replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+}
+
+async function fetchLegacyFullText(q,base="https://world.openfoodfacts.org"){
   const fields="code,product_name,brands,image_front_small_url";
-  const url=`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=50&fields=${encodeURIComponent(fields)}`;
+  const url=`${base}/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page=1&page_size=50&fields=${encodeURIComponent(fields)}`;
   const data=await fetchOFFJson(url);
   return Array.isArray(data?.products)?data.products:[];
 }
 
+async function fetchStructuredFallback(q){
+  const words=searchWords(q);
+  if(!words.length)return [];
+  const candidates=[
+    ...words,
+    words.slice(0,2).join("-"),
+    words.slice(-2).join("-")
+  ].map(offTagSlug).filter(Boolean);
+  const tags=[...new Set(candidates)].slice(0,6).join("|");
+  if(!tags)return [];
+
+  const fields="code,product_name,brands,image_front_small_url";
+  const urls=[
+    `https://world.openfoodfacts.org/api/v2/search?brands_tags=${encodeURIComponent(tags)}&page=1&page_size=50&sort_by=popularity_key&fields=${encodeURIComponent(fields)}`,
+    `https://world.openfoodfacts.org/api/v2/search?categories_tags=${encodeURIComponent(tags)}&page=1&page_size=50&sort_by=popularity_key&fields=${encodeURIComponent(fields)}`
+  ];
+  const settled=await Promise.allSettled(urls.map(u=>fetchOFFJson(u)));
+  const out=[];
+  for(const r of settled){
+    if(r.status==="fulfilled"&&Array.isArray(r.value?.products))out.push(...r.value.products);
+  }
+  return out;
+}
+
 function nameSearchVariants(q){
   const raw=String(q||"").trim();
-  const compact=raw
-    .replace(/[®™]/g," ")
-    .replace(/\b\d+(?:[.,]\d+)?\s*(?:ml|l|litros?|g|kg|quilos?|un|unid|unidades?)\b/gi," ")
-    .replace(/\s+/g," ")
-    .trim();
-
-  const noPunctuation=raw.replace(/[()[\]{}:;,_/\\|+-]+/g," ").replace(/\s+/g," ").trim();
+  const compact=raw.replace(/[®™]/g," ").replace(/\b\d+(?:[.,]\d+)?\s*(?:ml|l|litros?|g|kg|quilos?|un|unid|unidades?)\b/gi," ").replace(/\s+/g," ").trim();
+  const noPunctuation=raw.replace(/[()[\]{}:;,_/\\|+]+/g," ").replace(/\s+/g," ").trim();
   return [...new Set([raw,compact,noPunctuation].filter(x=>x.length>=2))].slice(0,3);
 }
 
-function renderOnlineNameResults(products,q){
+function renderOnlineNameResults(products,q,localFoods=[]){
   const box=document.getElementById("foodResults");
   onlineNameSearchResults=products;
+  const localHtml=localFoods.length?localFoods.map((f,i)=>`
+    <div class="result" data-combined-local="${i}">
+      <b>${esc(f.n)}</b><small>${fmt(f.k)} kcal/100g • salvo no app</small>
+    </div>`).join(""):"";
 
-  if(!products.length){
-    box.innerHTML=`
-      <div class="empty">
-        Nenhum produto encontrado com esse nome.<br><br>
-        <small>Tente usar apenas a marca + nome principal, sem tamanho da embalagem.</small>
-      </div>`;
+  if(!products.length&&!localFoods.length){
+    box.innerHTML=`<div class="empty">Nenhum produto encontrado com esse nome.<br><br><small>Tente marca + nome principal ou use o código de barras.</small></div>`;
     return;
   }
 
-  box.innerHTML=products.map((p,i)=>{
+  const onlineHtml=products.length?products.map((p,i)=>{
     const name=p.product_name||"Produto sem nome";
     const brand=p.brands||"Marca não informada";
     const code=onlineProductCode(p);
     const exact=onlineSearchNormalized(name)===onlineSearchNormalized(q);
+    return `<div class="result online-product-result" data-online-product="${i}" role="button" tabindex="0">
+      <div style="display:flex;gap:10px;align-items:center">
+        ${p.image_front_small_url?`<img src="${esc(p.image_front_small_url)}" alt="" style="width:52px;height:52px;object-fit:contain;border-radius:9px;background:#fff;flex:0 0 auto">`:""}
+        <div style="min-width:0;flex:1"><b>${exact?"✓ ":""}${esc(name)}</b><small>${esc(brand)}${code?` • ${esc(code)}`:""}</small><small>Produto online • toque para abrir os dados completos</small></div><span>›</span>
+      </div></div>`;
+  }).join(""):"";
 
-    return `
-      <div class="result online-product-result" data-online-product="${i}" role="button" tabindex="0">
-        <div style="display:flex;gap:10px;align-items:center">
-          ${p.image_front_small_url?`<img src="${esc(p.image_front_small_url)}" alt="" style="width:52px;height:52px;object-fit:contain;border-radius:9px;background:#fff;flex:0 0 auto">`:""}
-          <div style="min-width:0;flex:1">
-            <b>${exact?"✓ ":""}${esc(name)}</b>
-            <small>${esc(brand)}${code?` • ${esc(code)}`:""}</small>
-            <small>${exact?"Nome exato encontrado. ":""}Toque para abrir os dados completos do produto.</small>
-          </div>
-          <span style="font-size:18px">›</span>
-        </div>
-      </div>`;
-  }).join("");
+  box.innerHTML=`${localFoods.length?'<div class="note" style="margin:8px 0 4px"><b>No app</b></div>':""}${localHtml}${products.length?'<div class="note" style="margin:12px 0 4px"><b>Open Food Facts</b></div>':""}${onlineHtml}`;
 
+  box.querySelectorAll("[data-combined-local]").forEach(el=>el.onclick=()=>selectFood(localFoods[Number(el.dataset.combinedLocal)]));
   box.querySelectorAll("[data-online-product]").forEach(el=>{
     const openProduct=()=>{
       const p=onlineNameSearchResults[Number(el.dataset.onlineProduct)];
       const code=onlineProductCode(p);
       if(!code)return toast("Este resultado não possui código de barras cadastrado.");
-
       rememberOnlineProduct(p,code);
-      closeFoodModal();
-      openModal("scannerModal");
-      stopScanner();
-      barcodeInput.value=code;
+      closeFoodModal();openModal("scannerModal");stopScanner();barcodeInput.value=code;
       barcodeResults.innerHTML="<div class='empty'>Abrindo dados do produto...</div>";
       lookupBarcode(code);
     };
-
     el.onclick=openProduct;
-    el.onkeydown=e=>{
-      if(e.key==="Enter"||e.key===" "){
-        e.preventDefault();
-        openProduct();
-      }
-    };
+    el.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openProduct()}};
   });
 }
 
-async function searchOnline(){
-  const q=document.getElementById("foodSearch").value.trim();
+async function searchFoodEverywhere(){
+  const q=foodSearch.value.trim();
+  if(!q){toast("Digite o nome do alimento ou produto.");foodSearch.focus();return}
 
-  if(!q){
-    toast("Digite o nome do produto antes de buscar.");
-    document.getElementById("foodSearch").focus();
-    return;
-  }
-
-  // Se digitou um código, usa diretamente o fluxo do código de barras.
   const digits=q.replace(/\D/g,"");
   if(digits.length>=8&&digits===q.replace(/\s/g,"")){
-    closeFoodModal();
-    openModal("scannerModal");
-    barcodeInput.value=digits;
-    lookupBarcode(digits);
-    return;
+    closeFoodModal();openModal("scannerModal");barcodeInput.value=digits;lookupBarcode(digits);return;
   }
 
-  const box=document.getElementById("foodResults");
+  const localFoods=searchLocal(q).slice(0,15);
   const remembered=localRememberedNameMatches(q);
+  foodResults.innerHTML=`${localFoods.length?`<div class="insight-note">Encontrei ${localFoods.length} item(ns) no app. Procurando produtos online...</div>`:""}<div class="skeleton"></div><div class="skeleton"></div>`;
 
-  box.innerHTML=`
-    ${remembered.length?`<div class="insight-note">Encontrei ${remembered.length} produto(s) já vistos anteriormente. Buscando mais opções online...</div>`:""}
-    <div class='skeleton'></div><div class='skeleton'></div><div class='skeleton'></div>`;
-
-  const variants=nameSearchVariants(q);
   let remote=[];
-  let usedNewSearch=false;
+  const variants=nameSearchVariants(q);
 
-  // 1) Busca nova, própria para texto.
-  for(const variant of variants){
+  // Busca textual oficial legada: ainda é a única busca full-text do Product Opener.
+  for(const variant of variants.slice(0,2)){
     try{
-      const hits=await fetchSearchALicious(variant);
-      if(hits.length){
-        remote.push(...hits);
-        usedNewSearch=true;
-      }
-      // Se já vieram muitos resultados bons, não faz chamadas desnecessárias.
-      if(remote.length>=50)break;
-    }catch(e){
-      // Fallback abaixo.
-      break;
-    }
+      const r=await fetchLegacyFullText(variant);
+      remote.push(...r);
+      if(remote.length>=20)break;
+    }catch(e){}
   }
 
-  // 2) Fallback legado, caso o mecanismo novo não responda ou venha muito vazio.
+  // Se a busca textual estiver indisponível/limitada, tenta filtros estruturados v2 por marca/categoria.
   if(remote.length<8){
-    for(const variant of variants.slice(0,2)){
-      try{
-        const oldHits=await fetchLegacyNameSearch(variant);
-        remote.push(...oldHits);
-        if(remote.length>=20)break;
-      }catch(e){}
-    }
+    try{remote.push(...await fetchStructuredFallback(q))}catch(e){}
   }
 
   const products=dedupeAndRankOnlineProducts([...remembered,...remote],q);
-
-  if(products.length){
-    renderOnlineNameResults(products,q);
-    if(!usedNewSearch&&remembered.length){
-      const note=document.createElement("div");
-      note.className="insight-note";
-      note.style.marginBottom="8px";
-      note.textContent="A busca online está limitada no momento; também mostrei produtos que este aparelho já reconheceu por código.";
-      box.prepend(note);
-    }
-    return;
-  }
-
-  let msg="Não encontrei produtos com esse nome.";
-  if(navigator.onLine===false)msg="Seu aparelho está sem acesso à internet no momento.";
-
-  box.innerHTML=`
-    <div class="empty">
-      ${esc(msg)}
-      <br><br>
-      <small>Tente marca + nome principal. Ex.: “Sprite Zero”, sem colocar 2 L, garrafa, lata etc.</small>
-      <br><br>
-      <button class="btn btn-primary" id="retryOnlineNameSearch" type="button">↻ Tentar novamente</button>
-    </div>`;
-  document.getElementById("retryOnlineNameSearch")?.addEventListener("click",searchOnline);
+  renderOnlineNameResults(products,q,localFoods);
 }
+
+async function searchOnline(){return searchFoodEverywhere()}
 // Barcode
 async function lookupBarcode(code){
   code=String(code||"").replace(/\D/g,"");if(!code)return;
@@ -1936,7 +1859,7 @@ editProfileBtn.onclick=()=>{const p=state.profile;profileSex.value=p.sex;profile
 };saveProfile.onclick=()=>{const g=Number(calorieGoalInput.value);if(!(g>=500))return toast("Meta calórica inválida.");Object.assign(state.profile,{sex:profileSex.value,age:Number(profileAge.value)||null,weight:Number(profileWeight.value)||null,height:Number(profileHeight.value)||null,activity:Number(profileActivity.value)||1.2,objective:profileObjective.value,targetWeight:Number(targetWeight.value)||null,calorieGoal:Math.round(g),macroTargets:{p:Number(targetP.value)||0,c:Number(targetC.value)||0,f:Number(targetF.value)||0}});if(state.profile.weight){const last=state.weights.at(-1);if(!last||last.date!==key()||Number(last.weight)!==Number(state.profile.weight))state.weights.push({date:key(),weight:Number(state.profile.weight)})}save();closeModal("profileModal");renderAll();toast("Perfil salvo.")};saveMealTargets.onclick=()=>{state.profile.mealTargets={};document.querySelectorAll(".meal-target-input").forEach(i=>state.profile.mealTargets[i.dataset.meal]=Number(i.value)||0);save();renderToday();toast("Metas por refeição salvas.")};addMealNameBtn.onclick=()=>{const n=prompt("Nome da nova refeição:");if(!n||state.mealNames.includes(n))return;state.mealNames.push(n);Object.values(state.days).forEach(d=>{d.meals=d.meals||{};d.meals[n]=d.meals[n]||[]});save();renderAll()};addReminderBtn.onclick=()=>openModal("reminderModal");saveReminder.onclick=()=>{if(!reminderTime.value)return toast("Escolha um horário.");state.reminders.push({id:uid(),type:reminderType.value,time:reminderTime.value,message:reminderMessage.value.trim()});save();closeModal("reminderModal");renderReminders()};requestNotifications.onclick=async()=>{if(!("Notification" in window))return toast("Notificações não são suportadas aqui.");const p=await Notification.requestPermission();toast(p==="granted"?"Notificações permitidas.":"Permissão não concedida.")};setInterval(()=>{if(!("Notification" in window)||Notification.permission!=="granted")return;const now=new Date(),hm=now.toTimeString().slice(0,5),day=localDateKey(now);state.reminders.forEach(r=>{const sk=`rem-${r.id}-${day}`;if(r.time===hm&&!sessionStorage.getItem(sk)){new Notification("Minhas Calorias",{body:r.message||`Lembrete: ${r.type}`});sessionStorage.setItem(sk,"1")}})},30000);
 themeBtn.onclick=()=>{state.settings.dark=!state.settings.dark;save();applyAppearance()};backgroundColor.oninput=()=>{state.settings.bg=backgroundColor.value;save();applyAppearance()};exportBtn.onclick=()=>{const a=document.createElement("a"),blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});a.href=URL.createObjectURL(blob);a.download="minhas-calorias-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};importBtn.onclick=()=>importFile.click();importFile.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{state=upgradeState(deepMerge(DEFAULT_STATE,JSON.parse(r.result)));save(false);renderAll();toast("Backup importado.")}catch{toast("Arquivo inválido.")}};r.readAsText(f)};restoreBackupBtn.onclick=()=>{const arr=JSON.parse(localStorage.getItem("mcAutoBackups")||"[]");if(!arr.length)return toast("Nenhum backup automático disponível.");const txt=arr.map((x,i)=>`${i+1}. ${new Date(x.at).toLocaleString("pt-BR")}`).join("\n"),n=Number(prompt("Escolha o backup:\n"+txt,"1"));if(!(n>=1&&n<=arr.length))return;state=upgradeState(deepMerge(DEFAULT_STATE,arr[n-1].data));save(false);renderAll();toast("Backup restaurado.")};clearBtn.onclick=()=>{if(confirm("Apagar todos os dados do app?")){localStorage.removeItem("minhasCaloriasCompleto");location.reload()}};
 menuProfile.onclick=()=>{menuModal.classList.remove("open");switchPage("profilePage")};menuWaterCalc.onclick=()=>{menuModal.classList.remove("open");waterCalcBtn.click()};menuReminders.onclick=()=>{menuModal.classList.remove("open");switchPage("profilePage");setTimeout(()=>addReminderBtn.scrollIntoView({behavior:"smooth",block:"center"}),100)};menuTheme.onclick=()=>{themeBtn.click();menuModal.classList.remove("open")};menuColor.onclick=()=>{menuModal.classList.remove("open");switchPage("profilePage");setTimeout(()=>backgroundColor.scrollIntoView({behavior:"smooth",block:"center"}),100)};menuExport.onclick=()=>{exportBtn.click();menuModal.classList.remove("open")};menuImport.onclick=()=>{importBtn.click();menuModal.classList.remove("open")};
-document.querySelectorAll("[data-food-tab]").forEach(t=>t.onclick=()=>{document.querySelectorAll("[data-food-tab]").forEach(x=>x.classList.toggle("active",x===t));["searchFoodTab","assistantFoodTab","manualFoodTab"].forEach(id=>document.getElementById(id).classList.toggle("hidden",t.dataset.foodTab!==id));});foodSearchBtn.onclick=()=>showFoodResults(searchLocal(foodSearch.value));foodSearch.onkeydown=e=>{if(e.key==="Enter")foodSearchBtn.click()};searchOnlineBtn.onclick=searchOnline;portionMode.onchange=updateServingHint;saveSelectedFood.onclick=()=>{if(!selectedFood)return;const mode=portionMode.value,amount=Number(foodAmount.value);if(!(amount>0))return toast("Quantidade inválida.");const grams=mode==="serving"?amount*selectedFood.servingG:["slice","spoon","cup"].includes(mode)?amount*Number(portionEquivalent.value||0):amount;if(!(grams>0))return toast("Informe o equivalente em gramas.");addFoodToMeal(selectedFood,foodMeal.value,grams,mode==="ml"?"ml":"g");closeFoodModal()};barcodeBtn.onclick=()=>{closeFoodModal();startScanner()};closeScanner.onclick=()=>{stopScanner();closeModal("scannerModal")};barcodeLookup.onclick=()=>lookupBarcode(barcodeInput.value);barcodeInput.onkeydown=e=>{if(e.key==="Enter")barcodeLookup.click()};barcodeNativePhotoBtn.onclick=()=>barcodeCameraFile.click();barcodeCameraFile.onchange=e=>{const f=e.target.files[0];if(f)detectBarcodePhoto(f);e.target.value=""};saveManualFood.onclick=()=>{const f={n:manualName.value.trim(),k:Number(manualKcal.value),p:Number(manualP.value)||0,c:Number(manualC.value)||0,f:Number(manualF.value)||0,fiber:Number(manualFiber.value)||0,sugar:Number(manualSugar.value)||0,sodium:Number(manualSodium.value)||0,chol:Number(manualChol.value)||0,servingG:100,s:"Manual"},g=Number(manualG.value);if(!f.n||!(f.k>=0)||!(g>0))return toast("Preencha nome, calorias e quantidade.");if(!manualMeal.value||!state.mealNames.includes(manualMeal.value))return toast("Selecione em qual refeição o alimento será adicionado.");const suspicious=f.p>100||f.c>100||f.f>100;if(suspicious&&!confirm("Há nutriente acima de 100 g por 100 g. Deseja adicionar mesmo assim?"))return;if(saveAsCustom.checked)state.customFoods.push({...f,s:"Personalizado"});addFoodToMeal(f,manualMeal.value,g);closeFoodModal()};
+document.querySelectorAll("[data-food-tab]").forEach(t=>t.onclick=()=>{document.querySelectorAll("[data-food-tab]").forEach(x=>x.classList.toggle("active",x===t));["searchFoodTab","assistantFoodTab","manualFoodTab"].forEach(id=>document.getElementById(id).classList.toggle("hidden",t.dataset.foodTab!==id));});foodSearchBtn.onclick=searchFoodEverywhere;foodSearch.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();searchFoodEverywhere()}};searchOnlineBtn.onclick=searchFoodEverywhere;portionMode.onchange=updateServingHint;saveSelectedFood.onclick=()=>{if(!selectedFood)return;const mode=portionMode.value,amount=Number(foodAmount.value);if(!(amount>0))return toast("Quantidade inválida.");const grams=mode==="serving"?amount*selectedFood.servingG:["slice","spoon","cup"].includes(mode)?amount*Number(portionEquivalent.value||0):amount;if(!(grams>0))return toast("Informe o equivalente em gramas.");addFoodToMeal(selectedFood,foodMeal.value,grams,mode==="ml"?"ml":"g");closeFoodModal()};barcodeBtn.onclick=()=>{closeFoodModal();startScanner()};closeScanner.onclick=()=>{stopScanner();closeModal("scannerModal")};barcodeLookup.onclick=()=>lookupBarcode(barcodeInput.value);barcodeInput.onkeydown=e=>{if(e.key==="Enter")barcodeLookup.click()};barcodeNativePhotoBtn.onclick=()=>barcodeCameraFile.click();barcodeCameraFile.onchange=e=>{const f=e.target.files[0];if(f)detectBarcodePhoto(f);e.target.value=""};saveManualFood.onclick=()=>{const f={n:manualName.value.trim(),k:Number(manualKcal.value),p:Number(manualP.value)||0,c:Number(manualC.value)||0,f:Number(manualF.value)||0,fiber:Number(manualFiber.value)||0,sugar:Number(manualSugar.value)||0,sodium:Number(manualSodium.value)||0,chol:Number(manualChol.value)||0,servingG:100,s:"Manual"},g=Number(manualG.value);if(!f.n||!(f.k>=0)||!(g>0))return toast("Preencha nome, calorias e quantidade.");if(!manualMeal.value||!state.mealNames.includes(manualMeal.value))return toast("Selecione em qual refeição o alimento será adicionado.");const suspicious=f.p>100||f.c>100||f.f>100;if(suspicious&&!confirm("Há nutriente acima de 100 g por 100 g. Deseja adicionar mesmo assim?"))return;if(saveAsCustom.checked)state.customFoods.push({...f,s:"Personalizado"});addFoodToMeal(f,manualMeal.value,g);closeFoodModal()};
 
 
 // ============================================================
