@@ -6,108 +6,6 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#667eea">
-   <style>
-html.central-guard-lock body{
-  visibility:hidden!important;
-}
-
-#centralGuardLoading,
-#centralGuardBlocked{
-  position:fixed;
-  inset:0;
-  z-index:2147483647;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:18px;
-  background:linear-gradient(145deg,#667eea,#764ba2);
-  font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
-}
-
-#centralGuardLoading{
-  visibility:visible!important;
-}
-
-.central-guard-loading-box,
-.central-guard-block-box{
-  width:min(430px,100%);
-  background:#fff;
-  border-radius:26px;
-  padding:24px 20px;
-  text-align:center;
-  box-shadow:0 25px 70px rgba(0,0,0,.25);
-  color:#20283a;
-}
-
-.central-guard-spinner{
-  width:42px;
-  height:42px;
-  margin:0 auto 14px;
-  border:4px solid #e6e9f5;
-  border-top-color:#667eea;
-  border-radius:50%;
-  animation:centralGuardSpin .8s linear infinite;
-}
-
-@keyframes centralGuardSpin{
-  to{transform:rotate(360deg)}
-}
-
-.central-guard-loading-box b{
-  display:block;
-  font-size:18px;
-}
-
-.central-guard-loading-box small{
-  display:block;
-  margin-top:5px;
-  color:#687187;
-  font-size:10px;
-}
-
-.central-guard-block-box .central-guard-lock-icon{
-  font-size:42px;
-  margin-bottom:8px;
-}
-
-.central-guard-block-box h2{
-  margin:0 0 8px;
-  font-size:23px;
-}
-
-.central-guard-block-box p{
-  margin:0;
-  color:#687187;
-  font-size:12px;
-  line-height:1.55;
-}
-
-.central-guard-block-box button{
-  width:100%;
-  min-height:50px;
-  margin-top:16px;
-  border:0;
-  border-radius:14px;
-  background:linear-gradient(135deg,#667eea,#5363dc);
-  color:#fff;
-  font-size:13px;
-  font-weight:850;
-}
-
-.central-guard-block-box small{
-  display:block;
-  margin-top:10px;
-  color:#a0a6b4;
-  font-size:9px;
-}
-</style>
-
-<script>
-document.documentElement.classList.add("central-guard-lock");
-</script>
-
-<script src="auth-guard-v3.js"></script>
-   
 <link rel="manifest" href="manifest.json">
 <title>Minhas Calorias Completo</title>
 <style>
@@ -629,6 +527,11 @@ body.dark .assistant-macro b{color:#f4f6fb}
 body.dark .assistant-components{background:#151a24;border-color:#273043}
 
 
+
+.online-product-result{cursor:pointer}
+.online-product-result:focus{outline:2px solid var(--primary);outline-offset:2px}
+.online-product-result small{display:block;margin-top:3px}
+
 </style>
 </head>
 <body>
@@ -942,7 +845,7 @@ body.dark .assistant-components{background:#151a24;border-color:#273043}
     <label>Refeição</label><select id="foodMeal"></select>
     <label>Buscar alimento, favorito, recente ou produto</label>
     <div class="search-row"><input id="foodSearch" placeholder="Ex.: arroz, banana, whey..."><button id="foodSearchBtn">⌕</button></div>
-    <div class="chip-row" style="margin-top:9px"><button type="button" class="chip" id="searchOnlineBtn">🌐 Buscar produtos online</button><button type="button" class="chip" id="barcodeBtn">📷 Código de barras</button></div>
+    <div class="chip-row" style="margin-top:9px"><button type="button" class="chip" id="searchOnlineBtn" title="Pesquisar no Open Food Facts pelo nome e revisar como no código de barras">🌐 Buscar pelo nome</button><button type="button" class="chip" id="barcodeBtn">📷 Código de barras</button></div>
     <div class="results" id="foodResults"></div>
     <div id="selectedFoodBox" class="selected hidden"></div>
     <div id="foodAmountBox" class="hidden">
@@ -1569,7 +1472,100 @@ function foodFromOFFProduct(p,code=""){
     s:"Open Food Facts"+(p.brands?" • "+p.brands:"")+(code||p.code?" • "+(code||p.code):"")
   };
 }
-async function searchOnline(){const q=document.getElementById("foodSearch").value.trim();if(!q){toast("Digite o nome do produto antes de buscar online.");document.getElementById("foodSearch").focus();return;}const cache=state.offCache[q.toLowerCase()];if(cache&&Date.now()-cache.at<7*86400000){showFoodResults(cache.items);return}const box=document.getElementById("foodResults");box.innerHTML="<div class='empty'>Buscando produtos...</div>";try{const url="https://world.openfoodfacts.org/cgi/search.pl?search_terms="+encodeURIComponent(q)+"&search_simple=1&action=process&json=1&page_size=20&fields=code,product_name,brands,nutriments,serving_quantity,serving_size,nutrition_data_per";const res=await fetch(url),data=await res.json();const items=(data.products||[]).map(p=>foodFromOFFProduct(p,p.code||"")).filter(Boolean);state.offCache[q.toLowerCase()]={at:Date.now(),items};save(false);showFoodResults(items)}catch(e){box.innerHTML="<div class='empty'>Não foi possível consultar a internet. Use a base local ou o modo manual.</div>"}}
+let onlineNameSearchResults=[];
+
+function renderOnlineNameResults(products){
+  const box=document.getElementById("foodResults");
+  onlineNameSearchResults=products;
+
+  if(!products.length){
+    box.innerHTML="<div class='empty'>Nenhum produto encontrado com esse nome.</div>";
+    return;
+  }
+
+  box.innerHTML=products.map((p,i)=>{
+    const name=p.product_name||"Produto sem nome";
+    const brand=p.brands||"Marca não informada";
+    const code=String(p.code||"").replace(/\D/g,"");
+    const f=foodFromOFFProduct(p,code);
+    const kcal=f?`${fmt(f.servingK??f.k)} kcal${f.servingK!=null?" por porção":"/100g"}`:"Informação nutricional será conferida ao abrir";
+    return `
+      <div class="result online-product-result" data-online-product="${i}" role="button" tabindex="0">
+        <div style="display:flex;gap:10px;align-items:center">
+          ${p.image_front_small_url?`<img src="${esc(p.image_front_small_url)}" alt="" style="width:52px;height:52px;object-fit:contain;border-radius:9px;background:#fff;flex:0 0 auto">`:""}
+          <div style="min-width:0;flex:1">
+            <b>${esc(name)}</b>
+            <small>${esc(brand)} • ${esc(kcal)}</small>
+            <small>Toque para abrir a mesma revisão do código de barras.</small>
+          </div>
+          <span style="font-size:18px">›</span>
+        </div>
+      </div>`;
+  }).join("");
+
+  box.querySelectorAll("[data-online-product]").forEach(el=>{
+    const openProduct=()=>{
+      const p=onlineNameSearchResults[Number(el.dataset.onlineProduct)];
+      const code=String(p?.code||"").replace(/\D/g,"");
+      if(!code)return toast("Este resultado não possui código de barras cadastrado.");
+
+      // Fecha a busca por nome e abre exatamente o mesmo fluxo do código.
+      closeFoodModal();
+      openModal("scannerModal");
+      stopScanner();
+      barcodeInput.value=code;
+      barcodeResults.innerHTML="<div class='empty'>Abrindo dados do produto...</div>";
+      lookupBarcode(code);
+    };
+
+    el.onclick=openProduct;
+    el.onkeydown=e=>{
+      if(e.key==="Enter"||e.key===" "){
+        e.preventDefault();
+        openProduct();
+      }
+    };
+  });
+}
+
+async function searchOnline(){
+  const q=document.getElementById("foodSearch").value.trim();
+
+  if(!q){
+    toast("Digite o nome do produto antes de buscar.");
+    document.getElementById("foodSearch").focus();
+    return;
+  }
+
+  const box=document.getElementById("foodResults");
+  box.innerHTML="<div class='skeleton'></div><div class='skeleton'></div><div class='skeleton'></div>";
+
+  try{
+    const fields="code,product_name,brands,nutriments,serving_quantity,serving_size,nutrition_data_per,image_front_small_url";
+    const url=`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=20&fields=${encodeURIComponent(fields)}`;
+    const data=await fetchOFFJson(url);
+
+    const products=(data?.products||[])
+      .filter(p=>p&&p.product_name&&String(p.code||"").replace(/\D/g,""))
+      .slice(0,20);
+
+    renderOnlineNameResults(products);
+  }catch(e){
+    let msg="Não foi possível pesquisar produtos agora.";
+    if(navigator.onLine===false)msg="Seu aparelho está sem acesso à internet no momento.";
+    else if(e?.kind==="rate")msg="O Open Food Facts limitou temporariamente as pesquisas. Aguarde alguns segundos e tente novamente.";
+    else if(e?.kind==="server")msg="O Open Food Facts está temporariamente indisponível.";
+    else if(e?.kind==="timeout")msg="A pesquisa demorou demais para responder.";
+
+    box.innerHTML=`
+      <div class="empty">
+        ${esc(msg)}
+        <br><br>
+        <button class="btn btn-primary" id="retryOnlineNameSearch" type="button">↻ Tentar novamente</button>
+      </div>`;
+    document.getElementById("retryOnlineNameSearch")?.addEventListener("click",searchOnline);
+  }
+}
 // Barcode
 async function lookupBarcode(code){
   code=String(code||"").replace(/\D/g,"");if(!code)return;
