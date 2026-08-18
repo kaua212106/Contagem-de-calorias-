@@ -6,108 +6,6 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#667eea">
-   <style>
-html.central-guard-lock body{
-  visibility:hidden!important;
-}
-
-#centralGuardLoading,
-#centralGuardBlocked{
-  position:fixed;
-  inset:0;
-  z-index:2147483647;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:18px;
-  background:linear-gradient(145deg,#667eea,#764ba2);
-  font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
-}
-
-#centralGuardLoading{
-  visibility:visible!important;
-}
-
-.central-guard-loading-box,
-.central-guard-block-box{
-  width:min(430px,100%);
-  background:#fff;
-  border-radius:26px;
-  padding:24px 20px;
-  text-align:center;
-  box-shadow:0 25px 70px rgba(0,0,0,.25);
-  color:#20283a;
-}
-
-.central-guard-spinner{
-  width:42px;
-  height:42px;
-  margin:0 auto 14px;
-  border:4px solid #e6e9f5;
-  border-top-color:#667eea;
-  border-radius:50%;
-  animation:centralGuardSpin .8s linear infinite;
-}
-
-@keyframes centralGuardSpin{
-  to{transform:rotate(360deg)}
-}
-
-.central-guard-loading-box b{
-  display:block;
-  font-size:18px;
-}
-
-.central-guard-loading-box small{
-  display:block;
-  margin-top:5px;
-  color:#687187;
-  font-size:10px;
-}
-
-.central-guard-block-box .central-guard-lock-icon{
-  font-size:42px;
-  margin-bottom:8px;
-}
-
-.central-guard-block-box h2{
-  margin:0 0 8px;
-  font-size:23px;
-}
-
-.central-guard-block-box p{
-  margin:0;
-  color:#687187;
-  font-size:12px;
-  line-height:1.55;
-}
-
-.central-guard-block-box button{
-  width:100%;
-  min-height:50px;
-  margin-top:16px;
-  border:0;
-  border-radius:14px;
-  background:linear-gradient(135deg,#667eea,#5363dc);
-  color:#fff;
-  font-size:13px;
-  font-weight:850;
-}
-
-.central-guard-block-box small{
-  display:block;
-  margin-top:10px;
-  color:#a0a6b4;
-  font-size:9px;
-}
-</style>
-
-<script>
-document.documentElement.classList.add("central-guard-lock");
-</script>
-
-<script src="auth-guard-v3.js"></script>
-   
 <link rel="manifest" href="manifest.json">
 <title>Minhas Calorias Completo</title>
 <style>
@@ -640,6 +538,85 @@ body.dark .assistant-components{background:#151a24;border-color:#273043}
 .food-search-help{display:block;margin-top:7px;line-height:1.4}
 @media(max-width:360px){.food-search-actions{grid-template-columns:1fr}}
 
+
+.weekly-deficit-main{
+  text-align:center;
+  padding:8px 0 12px;
+}
+.weekly-deficit-number{
+  display:block;
+  font-size:34px;
+  line-height:1;
+  font-weight:900;
+  letter-spacing:-1px;
+  color:var(--primary);
+}
+.weekly-deficit-main small{
+  display:block;
+  margin-top:6px;
+  color:var(--pro-text-2);
+}
+.weekly-deficit-progress{margin-top:2px}
+.weekly-deficit-progress>div{width:0}
+.weekly-deficit-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  margin-top:13px;
+}
+.weekly-deficit-grid>div{
+  background:#f7f8fc;
+  border:1px solid #e8ebf2;
+  border-radius:13px;
+  padding:10px;
+}
+.weekly-deficit-grid small{
+  display:block;
+  color:var(--pro-text-2);
+  font-size:10px;
+  margin-bottom:3px;
+}
+.weekly-deficit-grid b{font-size:15px}
+.weekly-deficit-days{
+  display:grid;
+  grid-template-columns:repeat(7,minmax(52px,1fr));
+  gap:5px;
+  overflow-x:auto;
+  padding:10px 0 2px;
+}
+.weekly-deficit-day{
+  min-width:52px;
+  padding:8px 4px;
+  border-radius:12px;
+  text-align:center;
+  background:#f7f8fc;
+  border:1px solid #e8ebf2;
+}
+.weekly-deficit-day b{
+  display:block;
+  font-size:11px;
+  text-transform:capitalize;
+}
+.weekly-deficit-day small{
+  display:block;
+  font-size:9px;
+  margin-top:4px;
+  color:var(--pro-text-2);
+  line-height:1.25;
+}
+.weekly-deficit-day.maintenance{
+  outline:1px dashed rgba(102,116,232,.45);
+}
+body.dark .weekly-deficit-grid>div,
+body.dark .weekly-deficit-day{
+  background:#151a24;
+  border-color:#273043;
+}
+@media(max-width:380px){
+  .weekly-deficit-number{font-size:30px}
+  .weekly-deficit-grid{grid-template-columns:1fr 1fr}
+}
+
 </style>
 </head>
 <body>
@@ -667,6 +644,43 @@ body.dark .assistant-components{background:#151a24;border-color:#273043}
     <div class="progress"><div id="progressBar"></div></div>
     <div class="macro-grid" id="macroGrid"></div>
     <div class="nutrient-grid" id="nutrientGrid"></div>
+  </section>
+  <section class="card" id="weeklyDeficitCard">
+    <div class="section-title">
+      <h2>📉 Déficit da semana</h2>
+      <span class="badge" id="weeklyDeficitBadge">estimado</span>
+    </div>
+
+    <div class="weekly-deficit-main">
+      <span class="weekly-deficit-number" id="weeklyDeficitValue">—</span>
+      <small id="weeklyDeficitLabel">kcal a menos que o gasto estimado</small>
+    </div>
+
+    <div class="progress weekly-deficit-progress">
+      <div id="weeklyDeficitProgressBar"></div>
+    </div>
+
+    <div class="weekly-deficit-grid">
+      <div>
+        <small>Consumidas</small>
+        <b id="weeklyDeficitConsumed">—</b>
+      </div>
+      <div>
+        <small>Gasto estimado</small>
+        <b id="weeklyDeficitSpent">—</b>
+      </div>
+      <div>
+        <small>Meta semanal</small>
+        <b id="weeklyDeficitTarget">—</b>
+      </div>
+      <div>
+        <small>Dias registrados</small>
+        <b id="weeklyDeficitLoggedDays">0</b>
+      </div>
+    </div>
+
+    <div class="weekly-deficit-days" id="weeklyDeficitDays"></div>
+    <p class="note" id="weeklyDeficitNote" style="margin-top:10px"></p>
   </section>
 
   <section class="card" data-home-card="smart">
@@ -3549,6 +3563,173 @@ function updateProfileDeficit(){
   el.addEventListener("change",updateProfileDeficit);
 });
 updateOnboardingDeficit();
+
+
+// ============================================================
+// CONTADOR DE DÉFICIT SEMANAL REAL ESTIMADO
+// ============================================================
+function hasFoodLog(day){
+  return !!day && Object.values(day.meals||{}).some(arr=>Array.isArray(arr)&&arr.length>0);
+}
+
+function mondayOfWeek(date=new Date()){
+  const d=new Date(date);
+  d.setHours(12,0,0,0);
+  const diff=(d.getDay()+6)%7;
+  d.setDate(d.getDate()-diff);
+  return d;
+}
+
+function weeklyEnergyBalance(){
+  const maintenance=estimateAdultMaintenance(state.profile);
+  const schedule=calorieScheduleInfo(state.profile);
+  const start=mondayOfWeek(new Date());
+  const today=new Date();
+  today.setHours(12,0,0,0);
+
+  let consumed=0;
+  let spent=0;
+  let loggedDays=0;
+  const days=[];
+
+  for(let i=0;i<7;i++){
+    const d=new Date(start);
+    d.setDate(start.getDate()+i);
+    d.setHours(12,0,0,0);
+
+    const k=localDateKey(d);
+    const day=state.days[k];
+    const future=d>today;
+    const logged=!future&&hasFoodLog(day);
+    const kcal=logged?calcDayTotals(day).k:0;
+    const balance=logged&&maintenance>0?maintenance-kcal:null;
+
+    if(logged){
+      consumed+=kcal;
+      spent+=maintenance;
+      loggedDays++;
+    }
+
+    days.push({
+      d,k,logged,future,kcal,balance,
+      maintenanceDay:schedule.enabled&&d.getDay()===schedule.maintenanceDay
+    });
+  }
+
+  const net=spent-consumed;
+  const target=schedule.enabled?Number(schedule.effective)||0:0;
+
+  return {
+    maintenance,
+    consumed,
+    spent,
+    loggedDays,
+    net,
+    target,
+    approxKg:net/7700,
+    days,
+    start,
+    end:days[6].d
+  };
+}
+
+function renderWeeklyDeficitCounter(){
+  const card=document.getElementById("weeklyDeficitCard");
+  if(!card)return;
+
+  const data=weeklyEnergyBalance();
+  const value=document.getElementById("weeklyDeficitValue");
+  const label=document.getElementById("weeklyDeficitLabel");
+  const badge=document.getElementById("weeklyDeficitBadge");
+  const bar=document.getElementById("weeklyDeficitProgressBar");
+
+  const period=`${data.start.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}–${data.end.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}`;
+
+  if(!(data.maintenance>0)){
+    value.textContent="—";
+    label.textContent="gasto de manutenção ainda não disponível";
+    badge.textContent=period;
+    weeklyDeficitConsumed.textContent="—";
+    weeklyDeficitSpent.textContent="—";
+    weeklyDeficitTarget.textContent=data.target>0?`${fmt(data.target)} kcal`:"—";
+    weeklyDeficitLoggedDays.textContent=String(data.loggedDays);
+    bar.style.width="0%";
+    weeklyDeficitDays.innerHTML=data.days.map(x=>`
+      <div class="weekly-deficit-day ${x.maintenanceDay?"maintenance":""}">
+        <b>${x.d.toLocaleDateString("pt-BR",{weekday:"short"}).replace(".","")}</b>
+        <small>${x.logged?`${fmt(x.kcal)} kcal`:"—"}</small>
+      </div>`).join("");
+    weeklyDeficitNote.textContent="O contador precisa de uma estimativa de gasto de manutenção disponível no Perfil.";
+    return;
+  }
+
+  const deficit=data.net>=0;
+  value.textContent=`${fmt(Math.abs(data.net))} kcal`;
+  label.textContent=deficit
+    ?"a menos que o gasto estimado"
+    :"a mais que o gasto estimado";
+  badge.textContent=deficit?"déficit estimado":"superávit estimado";
+
+  weeklyDeficitConsumed.textContent=`${fmt(data.consumed)} kcal`;
+  weeklyDeficitSpent.textContent=`${fmt(data.spent)} kcal`;
+  weeklyDeficitTarget.textContent=data.target>0?`${fmt(data.target)} kcal`:"sem meta";
+  weeklyDeficitLoggedDays.textContent=`${data.loggedDays}/7`;
+
+  const pct=data.target>0?Math.max(0,Math.min(100,data.net/data.target*100)):0;
+  bar.style.width=`${pct}%`;
+
+  weeklyDeficitDays.innerHTML=data.days.map(x=>{
+    let status="—";
+    if(x.logged&&x.balance!=null){
+      status=x.balance>=0
+        ?`Déf. ${fmt(x.balance)}`
+        :`Sup. ${fmt(Math.abs(x.balance))}`;
+    }else if(x.future){
+      status="futuro";
+    }
+
+    return `
+      <div class="weekly-deficit-day ${x.maintenanceDay?"maintenance":""}" title="${x.maintenanceDay?"Dia planejado de manutenção":""}">
+        <b>${x.d.toLocaleDateString("pt-BR",{weekday:"short"}).replace(".","")}</b>
+        <small>${status}</small>
+      </div>`;
+  }).join("");
+
+  const todayKey=localDateKey(new Date());
+  const todayIncluded=data.days.some(x=>x.k===todayKey&&x.logged);
+
+  let note=`Conta apenas os dias em que há alimentos registrados. O gasto usado é a manutenção estimada pelo Perfil.`;
+  if(todayIncluded)note+=" O valor de hoje é provisório até o fim do dia.";
+  if(data.net>0)note+=` Pela regra prática de 7.700 kcal/kg, o saldo atual equivale a aproximadamente ${Math.max(0,data.approxKg).toFixed(2).replace(".",",")} kg.`;
+  weeklyDeficitNote.textContent=note;
+}
+
+// Mantém o card atualizado sempre que a tela do dia é renderizada.
+const renderTodayBeforeWeeklyBalance=renderToday;
+renderToday=function(){
+  renderTodayBeforeWeeklyBalance();
+  renderWeeklyDeficitCounter();
+};
+
+// Acrescenta o saldo real estimado também à Visão semanal do Histórico.
+const renderWeeklyOverviewBeforeEnergyBalance=renderWeeklyOverview;
+renderWeeklyOverview=function(){
+  renderWeeklyOverviewBeforeEnergyBalance();
+
+  const data=weeklyEnergyBalance();
+  if(!weeklyOverviewStats||!(data.maintenance>0)||!data.loggedDays)return;
+
+  const deficit=data.net>=0;
+  weeklyOverviewStats.insertAdjacentHTML("afterbegin",`
+    <div class="stat-line">
+      <span>${deficit?"Déficit acumulado estimado":"Superávit acumulado estimado"}</span>
+      <b>${fmt(Math.abs(data.net))} kcal</b>
+    </div>
+    <div class="stat-line">
+      <span>Gasto estimado nos dias registrados</span>
+      <b>${fmt(data.spent)} kcal</b>
+    </div>`);
+};
 
 // PWA
 if("serviceWorker" in navigator && location.protocol.startsWith("http")){
