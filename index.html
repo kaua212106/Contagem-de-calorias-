@@ -6,108 +6,6 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#667eea">
-   <style>
-html.central-guard-lock body{
-  visibility:hidden!important;
-}
-
-#centralGuardLoading,
-#centralGuardBlocked{
-  position:fixed;
-  inset:0;
-  z-index:2147483647;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:18px;
-  background:linear-gradient(145deg,#667eea,#764ba2);
-  font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
-}
-
-#centralGuardLoading{
-  visibility:visible!important;
-}
-
-.central-guard-loading-box,
-.central-guard-block-box{
-  width:min(430px,100%);
-  background:#fff;
-  border-radius:26px;
-  padding:24px 20px;
-  text-align:center;
-  box-shadow:0 25px 70px rgba(0,0,0,.25);
-  color:#20283a;
-}
-
-.central-guard-spinner{
-  width:42px;
-  height:42px;
-  margin:0 auto 14px;
-  border:4px solid #e6e9f5;
-  border-top-color:#667eea;
-  border-radius:50%;
-  animation:centralGuardSpin .8s linear infinite;
-}
-
-@keyframes centralGuardSpin{
-  to{transform:rotate(360deg)}
-}
-
-.central-guard-loading-box b{
-  display:block;
-  font-size:18px;
-}
-
-.central-guard-loading-box small{
-  display:block;
-  margin-top:5px;
-  color:#687187;
-  font-size:10px;
-}
-
-.central-guard-block-box .central-guard-lock-icon{
-  font-size:42px;
-  margin-bottom:8px;
-}
-
-.central-guard-block-box h2{
-  margin:0 0 8px;
-  font-size:23px;
-}
-
-.central-guard-block-box p{
-  margin:0;
-  color:#687187;
-  font-size:12px;
-  line-height:1.55;
-}
-
-.central-guard-block-box button{
-  width:100%;
-  min-height:50px;
-  margin-top:16px;
-  border:0;
-  border-radius:14px;
-  background:linear-gradient(135deg,#667eea,#5363dc);
-  color:#fff;
-  font-size:13px;
-  font-weight:850;
-}
-
-.central-guard-block-box small{
-  display:block;
-  margin-top:10px;
-  color:#a0a6b4;
-  font-size:9px;
-}
-</style>
-
-<script>
-document.documentElement.classList.add("central-guard-lock");
-</script>
-
-<script src="auth-guard-v3.js"></script>
-   
 <link rel="manifest" href="manifest.json">
 <title>Minhas Calorias Completo</title>
 <style>
@@ -1198,6 +1096,7 @@ body.dark .weekly-deficit-day{
       <b>🤖 Descreva o que você está comendo</b>
       <p class="note" style="margin-top:5px">Pode escrever do seu jeito. Quanto mais detalhes sobre tamanho, ingredientes e preparo, melhor a estimativa.</p>
       <textarea id="assistantDescription" rows="4" placeholder="Ex.: 1 pedaço médio de lasanha caseira, do tamanho da palma da mão, com carne moída, bastante queijo e molho de tomate"></textarea>
+      <p class="note" style="margin-top:6px">Entende frações como <b>1 1/2 batata</b>, <b>1,5 batata</b>, <b>meia batata</b> e <b>uma batata e meia</b>.</p>
 
       <div class="assistant-photo-box">
         <div class="assistant-photo-head">
@@ -2268,11 +2167,114 @@ const HOMEMADE_PROFILES=[
 ];
 
 function assistantText(s){return normSearch(s).replace(/[^a-z0-9.,/\s]/g," ").replace(/\s+/g," ").trim()}
-function assistantNumberWord(q){
-  const map={um:1,uma:1,dois:2,duas:2,tres:3,quatro:4,cinco:5,seis:6};
-  for(const [w,n] of Object.entries(map))if(new RegExp(`\\b${w}\\b`).test(q))return n;
+const ASSISTANT_NUMBER_WORDS={
+  um:1,uma:1,dois:2,duas:2,tres:3,quatro:4,cinco:5,seis:6,
+  sete:7,oito:8,nove:9,dez:10,onze:11,doze:12
+};
+
+function assistantWordNumberValue(word){
+  const w=assistantText(word);
+  if(w==="meio"||w==="meia")return .5;
+  return ASSISTANT_NUMBER_WORDS[w]??null;
+}
+
+function assistantNumericValue(raw){
+  const s=String(raw||"").trim().replace(/\s+/g," ");
+
+  let m=s.match(/^(\d+(?:[.,]\d+)?)\s+(\d+)\s*\/\s*(\d+)$/);
+  if(m){
+    const whole=Number(m[1].replace(",","."));
+    const num=Number(m[2]),den=Number(m[3]);
+    return den>0?whole+num/den:null;
+  }
+
+  m=s.match(/^(\d+)\s*\/\s*(\d+)$/);
+  if(m){
+    const num=Number(m[1]),den=Number(m[2]);
+    return den>0?num/den:null;
+  }
+
+  if(/^\d+(?:[.,]\d+)?$/.test(s)){
+    const n=Number(s.replace(",","."));
+    return Number.isFinite(n)?n:null;
+  }
+
+  const w=assistantWordNumberValue(s);
+  if(w!=null)return w;
+
+  m=s.match(/^(um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze)\s+e\s+mei[oa]$/);
+  if(m){
+    const base=assistantWordNumberValue(m[1]);
+    return base!=null?base+.5:null;
+  }
+
   return null;
 }
+
+function assistantFoodTermRegex(key){
+  const k=assistantText(key).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  return new RegExp(`\\b${k}s?\\b`,"g");
+}
+
+function assistantQuantityNearFood(q,keys){
+  for(const key of keys){
+    const rx=assistantFoodTermRegex(key);
+    let match;
+
+    while((match=rx.exec(q))){
+      const before=q.slice(Math.max(0,match.index-50),match.index).trim();
+      const after=q.slice(match.index+match[0].length,match.index+match[0].length+26).trim();
+
+      let value=null,m;
+
+      // uma e meia batata / 2 e meia batatas
+      m=before.match(/((?:\d+(?:[.,]\d+)?)|(?:um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze))\s+e\s+mei[oa]\s*$/);
+      if(m){
+        const base=assistantNumericValue(m[1]);
+        if(base!=null)value=base+.5;
+      }
+
+      // 1 1/2 batata
+      if(value==null){
+        m=before.match(/(\d+(?:[.,]\d+)?\s+\d+\s*\/\s*\d+)\s*$/);
+        if(m)value=assistantNumericValue(m[1]);
+      }
+
+      // 1/2 batata
+      if(value==null){
+        m=before.match(/(\d+\s*\/\s*\d+)\s*$/);
+        if(m)value=assistantNumericValue(m[1]);
+      }
+
+      // 1,5 batata / 1.5 batata / 2 batatas
+      if(value==null){
+        m=before.match(/(\d+(?:[.,]\d+)?)\s*$/);
+        if(m)value=assistantNumericValue(m[1]);
+      }
+
+      // uma batata / meia batata
+      if(value==null){
+        m=before.match(/\b(um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|meio|meia)\s*$/);
+        if(m)value=assistantNumericValue(m[1]);
+      }
+
+      // uma batata e meia / 2 batatas e meia
+      if(value!=null&&/^e\s+mei[oa]\b/.test(after)){
+        value+=.5;
+      }
+
+      // batata e meia
+      if(value==null&&/^e\s+mei[oa]\b/.test(after)){
+        value=1.5;
+      }
+
+      if(value!=null&&value>0)return value;
+    }
+  }
+
+  return null;
+}
+
 function assistantAmountFromText(q){
   let m=q.match(/(\d+(?:[.,]\d+)?)\s*(kg|quilo|quilos|g|grama|gramas|ml|mililitro|mililitros|l|litro|litros)\b/);
   if(!m)return null;
@@ -2281,28 +2283,32 @@ function assistantAmountFromText(q){
   if(["l","litro","litros"].includes(u))return {amount:n*1000,unit:"ml"};
   return {amount:n,unit:u.startsWith("m")?"ml":"g"};
 }
+
 function assistantCount(q){
-  // Formas explícitas: "2 unidades", "3 fatias", etc.
-  let m=q.match(/\b(\d{1,2})\s*(pedacos?|fatias?|porcoes?|unidades?|conchas?|colheres?|copos?|xicaras?)\b/);
-  if(m)return Math.max(1,Number(m[1]));
+  let m=q.match(/\b((?:\d+(?:[.,]\d+)?\s+\d+\s*\/\s*\d+)|(?:\d+\s*\/\s*\d+)|(?:\d+(?:[.,]\d+)?)|(?:um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|meio|meia)(?:\s+e\s+mei[oa])?)\s*(pedacos?|fatias?|porcoes?|unidades?|conchas?|colheres?|copos?|xicaras?)\b/);
+  if(m){
+    const n=assistantNumericValue(m[1]);
+    if(n!=null&&n>0)return n;
+  }
 
-  // Quantidade escrita diretamente antes do alimento:
-  // "2 rosquinhas", "3 coxinhas", "4 biscoitos".
-  // Não interpreta medidas como 200 g, 250 ml, 1 kg, 2 litros etc. como unidades.
-  m=q.match(/\b(\d{1,2})\s+(?!kg\b|quilos?\b|g\b|gramas?\b|ml\b|mililitros?\b|l\b|litros?\b)([a-z][a-z0-9-]{2,})\b/);
-  if(m)return Math.max(1,Number(m[1]));
+  m=q.match(/\b((?:\d+(?:[.,]\d+)?\s+\d+\s*\/\s*\d+)|(?:\d+\s*\/\s*\d+)|(?:\d+(?:[.,]\d+)?)|(?:um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|meio|meia)(?:\s+e\s+mei[oa])?)\s+(?!kg\b|quilos?\b|g\b|gramas?\b|ml\b|mililitros?\b|l\b|litros?\b)([a-z][a-z0-9-]{2,})\b/);
+  if(m){
+    const n=assistantNumericValue(m[1]);
+    if(n!=null&&n>0){
+      const tail=q.slice((m.index||0)+m[0].length).trim();
+      return /^e\s+mei[oa]\b/.test(tail)?n+.5:n;
+    }
+  }
 
-  const n=assistantNumberWord(q);
-  if(n){
-    if(/(pedaco|fatia|porcao|unidade|concha|colher|copo|xicara)/.test(q))return n;
-
-    // Também entende "duas rosquinhas", "três coxinhas" etc.
-    const wordPattern=/(?:\bum\b|\buma\b|\bdois\b|\bduas\b|\btres\b|\bquatro\b|\bcinco\b|\bseis\b)\s+(?!kg\b|quilos?\b|g\b|gramas?\b|ml\b|mililitros?\b|l\b|litros?\b)[a-z][a-z0-9-]{2,}\b/;
-    if(wordPattern.test(q))return n;
+  m=q.match(/\b((?:\d+(?:[.,]\d+)?)|(?:um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze))\s+[a-z][a-z0-9-]{2,}\s+e\s+mei[oa]\b/);
+  if(m){
+    const n=assistantNumericValue(m[1]);
+    if(n!=null&&n>0)return n+.5;
   }
 
   return 1;
 }
+
 const ASSISTANT_MULTI_COMPONENTS=[
   {name:"Macarrão",keys:["macarrao","massa"],base:["macarrao cozido"],weight:180},
   {name:"Sardinha",keys:["sardinha"],base:["sardinha"],weight:80},
@@ -2329,7 +2335,8 @@ const ASSISTANT_MULTI_COMPONENTS=[
 
 function assistantWordMatch(q,key){
   const k=assistantText(key);
-  return new RegExp(`(^|\\s)${k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}(?=\\s|,|\\.|/|$)`).test(q);
+  const escaped=k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  return new RegExp(`(^|\\s)${escaped}s?(?=\\s|,|\\.|/|$)`).test(q);
 }
 function assistantBaseForComponent(c){
   const list=typeof BASE_FOODS!=="undefined"?BASE_FOODS:[];
@@ -2378,8 +2385,13 @@ function assistantCompositeEstimate(q,exactAmount,exactUnit,textAmount,size,mod)
     const scale=requestedAmount/baseTotal;
     weights=weights.map(w=>w*scale);
   }else{
-    const factor=assistantPortionFactor(q,size)*assistantCount(q);
-    weights=weights.map(w=>w*factor);
+    const factor=assistantPortionFactor(q,size);
+    weights=weights.map((w,i)=>{
+      const comp=comps[i];
+      const count=assistantQuantityNearFood(q,comp.keys)??1;
+      comp.detectedCount=count;
+      return w*factor*count;
+    });
   }
 
   const details=[];
@@ -2390,7 +2402,7 @@ function assistantCompositeEstimate(q,exactAmount,exactUnit,textAmount,size,mod)
     const x=w/100;
     const ck=food.k*x*mod.mult,cp=food.p*x,cc=food.c*x,cf=food.f*x;
     totalAmount+=w;kcal+=ck;p+=cp;c+=cc;fat+=cf;
-    details.push({name:comp.name,amount:w,kcal:ck});
+    details.push({name:comp.name,amount:w,kcal:ck,count:Number(comp.detectedCount)||1});
   });
 
   const densityFactor=100/Math.max(1,totalAmount);
@@ -2807,7 +2819,7 @@ async function assistantEstimateMeal(){
   const uncertainty=confidence>=.8?.16:confidence>=.7?.20:confidence>=.55?.25:.32;
   const low=Math.max(0,kcal*(1-uncertainty)),high=kcal*(1+uncertainty);
 
-  const detectedCount=(!exact&&!textAmount)?assistantCount(q):1;
+  const detectedCount=(!composite&&!exact&&!textAmount)?assistantCount(q):1;
   const usedPhoto=assistantPhotoSelectedItems().length>0;
   assistantEstimate={raw,profile,amount,unit,density,kcal,p,c,f,low,high,uncertainty,notes:mod.notes,details,detectedCount,usedPhoto};
   assistantResult.classList.remove("hidden");
@@ -2816,7 +2828,7 @@ async function assistantEstimateMeal(){
   const componentHtml=details.length>1?`
     <div class="assistant-components">
       <b>Itens considerados</b>
-      ${details.map(x=>`<div class="stat-line"><span>${esc(x.name)} • ~${fmt(x.amount,0)} g</span><b>~${fmt(x.kcal)} kcal</b></div>`).join("")}
+      ${details.map(x=>`<div class="stat-line"><span>${esc(x.name)}${x.count!==1?` • ${String(Number(x.count.toFixed(2))).replace(".",",")} un`:""} • ~${fmt(x.amount,0)} g</span><b>~${fmt(x.kcal)} kcal</b></div>`).join("")}
     </div>`:"";
 
   assistantResult.innerHTML=`
