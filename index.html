@@ -6,108 +6,6 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#667eea">
-   <style>
-html.central-guard-lock body{
-  visibility:hidden!important;
-}
-
-#centralGuardLoading,
-#centralGuardBlocked{
-  position:fixed;
-  inset:0;
-  z-index:2147483647;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:18px;
-  background:linear-gradient(145deg,#667eea,#764ba2);
-  font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
-}
-
-#centralGuardLoading{
-  visibility:visible!important;
-}
-
-.central-guard-loading-box,
-.central-guard-block-box{
-  width:min(430px,100%);
-  background:#fff;
-  border-radius:26px;
-  padding:24px 20px;
-  text-align:center;
-  box-shadow:0 25px 70px rgba(0,0,0,.25);
-  color:#20283a;
-}
-
-.central-guard-spinner{
-  width:42px;
-  height:42px;
-  margin:0 auto 14px;
-  border:4px solid #e6e9f5;
-  border-top-color:#667eea;
-  border-radius:50%;
-  animation:centralGuardSpin .8s linear infinite;
-}
-
-@keyframes centralGuardSpin{
-  to{transform:rotate(360deg)}
-}
-
-.central-guard-loading-box b{
-  display:block;
-  font-size:18px;
-}
-
-.central-guard-loading-box small{
-  display:block;
-  margin-top:5px;
-  color:#687187;
-  font-size:10px;
-}
-
-.central-guard-block-box .central-guard-lock-icon{
-  font-size:42px;
-  margin-bottom:8px;
-}
-
-.central-guard-block-box h2{
-  margin:0 0 8px;
-  font-size:23px;
-}
-
-.central-guard-block-box p{
-  margin:0;
-  color:#687187;
-  font-size:12px;
-  line-height:1.55;
-}
-
-.central-guard-block-box button{
-  width:100%;
-  min-height:50px;
-  margin-top:16px;
-  border:0;
-  border-radius:14px;
-  background:linear-gradient(135deg,#667eea,#5363dc);
-  color:#fff;
-  font-size:13px;
-  font-weight:850;
-}
-
-.central-guard-block-box small{
-  display:block;
-  margin-top:10px;
-  color:#a0a6b4;
-  font-size:9px;
-}
-</style>
-
-<script>
-document.documentElement.classList.add("central-guard-lock");
-</script>
-
-<script src="auth-guard-v3.js"></script>
-   
 <link rel="manifest" href="manifest.json">
 <title>Minhas Calorias Completo</title>
 <style>
@@ -1253,6 +1151,7 @@ body.dark .weekly-deficit-day{
       <p class="note">Se você souber o peso/volume, a estimativa de quantidade fica mais precisa. Para líquidos, ml é usado como aproximação de volume consumido.</p>
       <button class="btn btn-purple" id="assistantEstimateBtn" type="button">✨ Estimar refeição</button>
       <p class="note" style="margin-top:8px">Se houver foto, o app tenta analisá-la automaticamente. A descrição escrita continua opcional e pode ser usada junto com a imagem.</p>
+      <p class="note" style="margin-top:6px">Se a base offline não reconhecer bem o alimento, o app tenta buscar uma referência nutricional online automaticamente.</p>
     </div>
     <div id="assistantResult" class="assistant-result hidden"></div>
   </div>
@@ -2519,6 +2418,94 @@ function assistantCompositeEstimate(q,exactAmount,exactUnit,textAmount,size,mod)
   };
 }
 
+
+function assistantOnlineCleanQuery(raw){
+  let q=String(raw||"")
+    .replace(/pela foto\s*:/gi," ")
+    .replace(/\b(?:eu\s+)?(?:comi|comer|estou comendo|estava comendo)\b/gi," ")
+    .replace(/\b\d+(?:[.,]\d+)?\s+\d+\s*\/\s*\d+\b/g," ")
+    .replace(/\b\d+\s*\/\s*\d+\b/g," ")
+    .replace(/\b\d+(?:[.,]\d+)?\s*(?:kg|quilo|quilos|g|grama|gramas|ml|mililitro|mililitros|l|litro|litros|un|unid|unidade|unidades)\b/gi," ")
+    .replace(/\b(?:um|uma|dois|duas|tres|três|quatro|cinco|seis|sete|oito|nove|dez|meio|meia)\b/gi," ")
+    .replace(/\b(?:pequeno|pequena|pequenos|pequenas|medio|médio|media|média|grande|grandes|caseiro|caseira|caseiros|caseiras|porcao|porção|prato)\b/gi," ")
+    .replace(/[()[\]{}:;,_/\\|]+/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+
+  return q;
+}
+
+function assistantOnlineSearchVariants(raw){
+  const cleaned=assistantOnlineCleanQuery(raw);
+  const normal=nameSearchVariants(cleaned||raw);
+  const words=(cleaned||raw).split(/\s+/).filter(w=>w.length>1);
+  const shorter=words.slice(0,6).join(" ");
+  return [...new Set([cleaned,...normal,shorter].filter(x=>String(x).trim().length>=2))].slice(0,4);
+}
+
+async function assistantFindOnlineProfile(raw){
+  if(navigator.onLine===false)return null;
+
+  const queries=assistantOnlineSearchVariants(raw);
+  if(!queries.length)return null;
+
+  let candidates=[];
+
+  // Busca textual — limita chamadas para não sobrecarregar a API.
+  for(const q of queries.slice(0,2)){
+    try{
+      const found=await fetchLegacyFullText(q);
+      candidates.push(...found);
+      if(candidates.length>=20)break;
+    }catch(e){}
+  }
+
+  // Fallback estruturado se a busca textual vier vazia/fraca.
+  if(candidates.length<5){
+    try{
+      candidates.push(...await fetchStructuredFallback(queries[0]));
+    }catch(e){}
+  }
+
+  const ranked=dedupeAndRankOnlineProducts(candidates,queries[0]);
+  if(!ranked.length)return null;
+
+  // Só testa os três resultados mais prováveis para respeitar limites da API.
+  for(const product of ranked.slice(0,3)){
+    const score=onlineNameScore(product,queries[0]);
+    if(score<1400)continue;
+
+    const code=onlineProductCode(product);
+    if(!code)continue;
+
+    try{
+      const result=await getOFFBarcode(code);
+      if(!result?.product)continue;
+
+      const food=foodFromOFFProduct(result.product,code);
+      if(!food||!(Number(food.k)>=0))continue;
+
+      rememberOnlineProduct(result.product,code);
+
+      return {
+        name:food.n,
+        k:Number(food.k)||0,
+        p:Number(food.p)||0,
+        c:Number(food.c)||0,
+        f:Number(food.f)||0,
+        weight:Number(food.servingG)>0?Number(food.servingG):100,
+        confidence:score>=8000?.82:score>=4500?.76:.68,
+        online:true,
+        code,
+        brands:String(result.product.brands||""),
+        source:"Open Food Facts"
+      };
+    }catch(e){}
+  }
+
+  return null;
+}
+
 function assistantProfile(q){
   let best=null,bestScore=0;
   for(const x of HOMEMADE_PROFILES){
@@ -2905,6 +2892,22 @@ async function assistantEstimateMeal(){
     details=composite.details;
   }else{
     profile=assistantProfile(q);
+
+    // Se a base local não souber bem, tenta uma referência online antes
+    // de usar o valor genérico de "Preparação caseira mista".
+    if(Number(profile.confidence)<=.58&&navigator.onLine!==false){
+      assistantResult.classList.remove("hidden");
+      assistantResult.innerHTML=`
+        <div class="empty">
+          <b>🌐 Não encontrei uma referência boa na base offline.</b><br><br>
+          Pesquisando uma referência nutricional online…
+        </div>`;
+      assistantResult.scrollIntoView({behavior:"smooth",block:"center"});
+
+      const onlineProfile=await assistantFindOnlineProfile(typed||raw);
+      if(onlineProfile)profile=onlineProfile;
+    }
+
     let factor=assistantPortionFactor(q,size);
     if(exact>0){amount=exact;unit=assistantExactUnit.value}
     else if(textAmount){amount=textAmount.amount;unit=textAmount.unit}
@@ -2935,6 +2938,8 @@ async function assistantEstimateMeal(){
 
   assistantResult.innerHTML=`
     <div class="note">Estimativa para <b>${esc(profile.name)}</b> • ${fmt(amount,0)} ${unit}</div>
+    ${profile.online?`<div class="insight-note" style="margin-top:8px">🌐 Referência encontrada online: <b>${esc(profile.name)}</b>${profile.brands?` • ${esc(profile.brands)}`:""} • Open Food Facts.</div>`:""}
+    ${!profile.online&&Number(profile.confidence)<=.4?`<div class="insight-note" style="margin-top:8px">⚠️ Não encontrei uma referência específica nem online. Este resultado usa uma estimativa genérica e tem maior incerteza.</div>`:""}
     ${usedPhoto?`<div class="insight-note" style="margin-top:8px">📷 A foto foi usada como complemento da estimativa.</div>`:""}
     <div class="assistant-kcal">≈ ${fmt(kcal)} kcal</div>
     <div class="assistant-range">Faixa provável: ${fmt(low)}–${fmt(high)} kcal</div>
@@ -2963,7 +2968,7 @@ function assistantAddEstimate(){
   const e=assistantEstimate;if(!e)return;
   const meal=assistantMeal.value;
   if(!meal||!state.mealNames.includes(meal))return toast("Selecione em qual refeição a estimativa será adicionada.");
-  const f={n:`Estimativa: ${e.profile.name}`,k:e.density.k,p:e.density.p,c:e.density.c,f:e.density.f,fiber:0,sugar:0,sodium:0,chol:0,servingG:100,s:"Assistente caseiro (estimativa)"};
+  const f={n:`Estimativa: ${e.profile.name}`,k:e.density.k,p:e.density.p,c:e.density.c,f:e.density.f,fiber:0,sugar:0,sodium:0,chol:0,servingG:100,s:e.profile.online?"Assistente • Open Food Facts":"Assistente caseiro (estimativa)"};
   addFoodToMeal(f,meal,e.amount,e.unit);
   closeFoodModal();
   toast(`Estimativa adicionada: ${fmt(e.kcal)} kcal.`);
