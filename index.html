@@ -6,108 +6,6 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#667eea">
-   <style>
-html.central-guard-lock body{
-  visibility:hidden!important;
-}
-
-#centralGuardLoading,
-#centralGuardBlocked{
-  position:fixed;
-  inset:0;
-  z-index:2147483647;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:18px;
-  background:linear-gradient(145deg,#667eea,#764ba2);
-  font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
-}
-
-#centralGuardLoading{
-  visibility:visible!important;
-}
-
-.central-guard-loading-box,
-.central-guard-block-box{
-  width:min(430px,100%);
-  background:#fff;
-  border-radius:26px;
-  padding:24px 20px;
-  text-align:center;
-  box-shadow:0 25px 70px rgba(0,0,0,.25);
-  color:#20283a;
-}
-
-.central-guard-spinner{
-  width:42px;
-  height:42px;
-  margin:0 auto 14px;
-  border:4px solid #e6e9f5;
-  border-top-color:#667eea;
-  border-radius:50%;
-  animation:centralGuardSpin .8s linear infinite;
-}
-
-@keyframes centralGuardSpin{
-  to{transform:rotate(360deg)}
-}
-
-.central-guard-loading-box b{
-  display:block;
-  font-size:18px;
-}
-
-.central-guard-loading-box small{
-  display:block;
-  margin-top:5px;
-  color:#687187;
-  font-size:10px;
-}
-
-.central-guard-block-box .central-guard-lock-icon{
-  font-size:42px;
-  margin-bottom:8px;
-}
-
-.central-guard-block-box h2{
-  margin:0 0 8px;
-  font-size:23px;
-}
-
-.central-guard-block-box p{
-  margin:0;
-  color:#687187;
-  font-size:12px;
-  line-height:1.55;
-}
-
-.central-guard-block-box button{
-  width:100%;
-  min-height:50px;
-  margin-top:16px;
-  border:0;
-  border-radius:14px;
-  background:linear-gradient(135deg,#667eea,#5363dc);
-  color:#fff;
-  font-size:13px;
-  font-weight:850;
-}
-
-.central-guard-block-box small{
-  display:block;
-  margin-top:10px;
-  color:#a0a6b4;
-  font-size:9px;
-}
-</style>
-
-<script>
-document.documentElement.classList.add("central-guard-lock");
-</script>
-
-<script src="auth-guard-v3.js"></script>
-   
 <link rel="manifest" href="manifest.json">
 <title>Minhas Calorias Completo</title>
 <style>
@@ -831,6 +729,67 @@ body.dark .weekly-deficit-day{
   .weekly-deficit-grid{grid-template-columns:1fr 1fr}
 }
 
+
+.calorie-plan-mode-row{margin-top:10px}
+.daily-cal-plan{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:10px;
+}
+.daily-cal-row{
+  display:grid;
+  grid-template-columns:78px minmax(112px,1fr) minmax(88px,.8fr);
+  grid-template-areas:
+    "day mode value"
+    "day target target";
+  gap:7px;
+  align-items:center;
+  padding:9px;
+  border:1px solid #e5e9f3;
+  border-radius:14px;
+  background:rgba(255,255,255,.66);
+}
+.daily-cal-day{
+  grid-area:day;
+  font-weight:850;
+  font-size:12px;
+}
+.daily-cal-mode{grid-area:mode}
+.daily-cal-value{grid-area:value}
+.daily-cal-target{
+  grid-area:target;
+  font-size:10px;
+  color:var(--pro-text-2);
+  line-height:1.4;
+}
+.daily-cal-row select,
+.daily-cal-row input{
+  margin:0!important;
+  width:100%;
+  min-width:0;
+  padding:10px!important;
+  font-size:12px!important;
+}
+.daily-cal-row.is-maintenance .daily-cal-value{
+  opacity:.45;
+  pointer-events:none;
+}
+.daily-cal-target b{color:var(--primary)}
+body.dark .daily-cal-row{
+  background:#151a24;
+  border-color:#273043;
+}
+@media(max-width:430px){
+  .daily-cal-row{
+    grid-template-columns:70px minmax(0,1fr);
+    grid-template-areas:
+      "day mode"
+      "value value"
+      "target target";
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1303,21 +1262,38 @@ body.dark .weekly-deficit-day{
   <label>Meta de peso (kg)</label><input id="targetWeight" type="number" min="20" max="400" step="0.1">
 
   <div class="water-auto-box hidden" id="profileDeficitBox">
-    <b>📉 Déficit semanal</b>
-    <p class="note" style="margin-top:6px">1 kg ≈ 7.700 kcal é uma aproximação. O app distribui o déficit em 6 dias e deixa 1 dia na manutenção.</p>
-    <label>Déficit semanal desejado (kcal)</label>
-    <input id="profileWeeklyDeficit" type="number" min="0" max="6000" step="100">
-    <label>Dia de manutenção</label>
-    <select id="profileMaintenanceDay">
-      <option value="0">Domingo</option>
-      <option value="1">Segunda-feira</option>
-      <option value="2">Terça-feira</option>
-      <option value="3">Quarta-feira</option>
-      <option value="4">Quinta-feira</option>
-      <option value="5">Sexta-feira</option>
-      <option value="6">Sábado</option>
-    </select>
-    <div class="insight-note" id="profileDeficitPreview" style="margin-top:10px"></div>
+    <b>📉 Planejamento de calorias</b>
+    <p class="note" style="margin-top:6px">Escolha se quer manter o déficit fixo atual ou definir uma meta diferente para cada dia da semana.</p>
+
+    <div class="water-mode-row calorie-plan-mode-row">
+      <button type="button" class="water-mode-btn active" id="profilePlanFixedBtn">Déficit fixo</button>
+      <button type="button" class="water-mode-btn" id="profilePlanWeekdayBtn">Variado por dia</button>
+    </div>
+
+    <div id="profileFixedPlanArea">
+      <p class="note" style="margin-top:8px">1 kg ≈ 7.700 kcal é uma aproximação. O app distribui o déficit em 6 dias e deixa 1 dia na manutenção.</p>
+      <label>Déficit semanal desejado (kcal)</label>
+      <input id="profileWeeklyDeficit" type="number" min="0" max="6000" step="100">
+      <label>Dia de manutenção</label>
+      <select id="profileMaintenanceDay">
+        <option value="0">Domingo</option>
+        <option value="1">Segunda-feira</option>
+        <option value="2">Terça-feira</option>
+        <option value="3">Quarta-feira</option>
+        <option value="4">Quinta-feira</option>
+        <option value="5">Sexta-feira</option>
+        <option value="6">Sábado</option>
+      </select>
+      <div class="insight-note" id="profileDeficitPreview" style="margin-top:10px"></div>
+    </div>
+
+    <div id="profileWeekdayPlanArea" class="hidden">
+      <p class="note" style="margin-top:8px">
+        Em <b>Déficit</b>, a meta é gasto estimado − déficit. Em <b>Consumo</b>, vc define diretamente a meta de kcal. Em <b>Manutenção</b>, a meta fica igual ao gasto estimado.
+      </p>
+      <div class="daily-cal-plan" id="profileDailyPlanRows"></div>
+      <div class="insight-note" id="profileDailyPlanSummary" style="margin-top:10px"></div>
+    </div>
   </div>
 
   <div class="water-auto-box">
@@ -1508,32 +1484,48 @@ body.dark .weekly-deficit-day{
     <h2>🎯 Metas</h2><p class="note">Você poderá alterar tudo depois no Perfil.</p>
 
     <div class="water-auto-box hidden" id="obDeficitBox">
-      <b>📉 Déficit semanal automático</b>
-      <p class="note" style="margin-top:6px">
-        Regra prática: <b>1 kg ≈ 7.700 kcal</b> de déficit acumulado. É apenas uma aproximação; a perda real não é perfeitamente linear.
-      </p>
+      <b>📉 Planejamento de calorias</b>
+      <p class="note" style="margin-top:6px">Escolha entre o déficit fixo atual ou metas diferentes para cada dia da semana.</p>
 
-      <label>Quantas kcal de déficit você quer acumular na semana?</label>
-      <input id="obWeeklyDeficit" type="number" min="0" max="6000" step="100" value="3500">
-
-      <label>Dia de manutenção</label>
-      <select id="obMaintenanceDay">
-        <option value="0">Domingo</option>
-        <option value="1">Segunda-feira</option>
-        <option value="2">Terça-feira</option>
-        <option value="3">Quarta-feira</option>
-        <option value="4">Quinta-feira</option>
-        <option value="5">Sexta-feira</option>
-        <option value="6">Sábado</option>
-      </select>
-
-      <div class="insight-note" id="obDeficitPreview" style="margin-top:10px">
-        Preencha idade, peso e altura para ver a distribuição.
+      <div class="water-mode-row calorie-plan-mode-row">
+        <button type="button" class="water-mode-btn active" id="obPlanFixedBtn">Déficit fixo</button>
+        <button type="button" class="water-mode-btn" id="obPlanWeekdayBtn">Variado por dia</button>
       </div>
 
-      <p class="note" style="margin-top:8px">
-        Com 1 dia de manutenção, o limite do app é <b>6.000 kcal/semana</b>: no máximo 1.000 kcal de déficit em cada um dos outros 6 dias.
-      </p>
+      <div id="obFixedPlanArea">
+        <p class="note" style="margin-top:8px">
+          Regra prática: <b>1 kg ≈ 7.700 kcal</b> de déficit acumulado. É apenas uma aproximação.
+        </p>
+        <label>Quantas kcal de déficit você quer acumular na semana?</label>
+        <input id="obWeeklyDeficit" type="number" min="0" max="6000" step="100" value="3500">
+
+        <label>Dia de manutenção</label>
+        <select id="obMaintenanceDay">
+          <option value="0">Domingo</option>
+          <option value="1">Segunda-feira</option>
+          <option value="2">Terça-feira</option>
+          <option value="3">Quarta-feira</option>
+          <option value="4">Quinta-feira</option>
+          <option value="5">Sexta-feira</option>
+          <option value="6">Sábado</option>
+        </select>
+
+        <div class="insight-note" id="obDeficitPreview" style="margin-top:10px">
+          Preencha idade, peso e altura para ver a distribuição.
+        </div>
+
+        <p class="note" style="margin-top:8px">
+          Com 1 dia de manutenção, o limite do app é <b>6.000 kcal/semana</b>.
+        </p>
+      </div>
+
+      <div id="obWeekdayPlanArea" class="hidden">
+        <p class="note" style="margin-top:8px">
+          Ex.: segunda → Déficit 700; terça → Déficit 500; sábado → Consumo 2.300; domingo → Manutenção.
+        </p>
+        <div class="daily-cal-plan" id="obDailyPlanRows"></div>
+        <div class="insight-note" id="obDailyPlanSummary" style="margin-top:10px"></div>
+      </div>
     </div>
 
     <label id="obCaloriesLabel">Meta calórica manual (opcional)</label>
@@ -1588,7 +1580,7 @@ const BASE_FOODS=[
  {n:"Brócolis cozido",k:25,p:2.1,c:4.4,f:.4,fiber:3.3,sugar:1.4,sodium:33,chol:0,servingG:100,s:"Base brasileira"}
 ];
 const DEFAULT_MEALS=["Café da manhã","Almoço","Lanche","Jantar","Ceia"];
-const DEFAULT_STATE={version:15,profile:{sex:"male",age:null,weight:null,height:null,activity:1.2,objective:"maintain",calorieGoal:2000,targetWeight:null,weeklyDeficitKcal:0,maintenanceDay:0,calorieScheduleEnabled:false,waterGoalMl:2000,waterGoalMode:"auto",waterMlPerKg:35,macroTargets:{p:0,c:0,f:0},mealTargets:{},nutrientTargets:{}},settings:{dark:false,bg:"#667eea",tracked:["fiber","sugar","sodium","chol"],homeCards:{calories:true,progress:true,smart:true,quick:true,suggestions:true,streak:true,meals:true,notes:true},onboarded:false,fontScale:"normal",reduceMotion:false},days:{},plans:{},shoppingList:[],trash:[],weights:[],recipes:[],customFoods:[],favorites:[],recentFoods:[],savedMeals:[],mealNames:[...DEFAULT_MEALS],reminders:[],waterContainers:[{id:"cup250",name:"Copo",ml:250},{id:"bottle500",name:"Garrafa",ml:500}],offCache:{},onlineProductCatalog:[],autoBackups:[]};
+const DEFAULT_STATE={version:15,profile:{sex:"male",age:null,weight:null,height:null,activity:1.2,objective:"maintain",calorieGoal:2000,targetWeight:null,weeklyDeficitKcal:0,maintenanceDay:0,calorieScheduleEnabled:false,caloriePlanMode:"fixed",dailyCaloriePlan:null,waterGoalMl:2000,waterGoalMode:"auto",waterMlPerKg:35,macroTargets:{p:0,c:0,f:0},mealTargets:{},nutrientTargets:{}},settings:{dark:false,bg:"#667eea",tracked:["fiber","sugar","sodium","chol"],homeCards:{calories:true,progress:true,smart:true,quick:true,suggestions:true,streak:true,meals:true,notes:true},onboarded:false,fontScale:"normal",reduceMotion:false},days:{},plans:{},shoppingList:[],trash:[],weights:[],recipes:[],customFoods:[],favorites:[],recentFoods:[],savedMeals:[],mealNames:[...DEFAULT_MEALS],reminders:[],waterContainers:[{id:"cup250",name:"Copo",ml:250},{id:"bottle500",name:"Garrafa",ml:500}],offCache:{},onlineProductCatalog:[],autoBackups:[]};
 function deepMerge(base,src){if(Array.isArray(base))return Array.isArray(src)?src:base;if(typeof base!=="object"||base===null)return src??base;const out={...base};if(src&&typeof src==="object")Object.keys(src).forEach(k=>out[k]=k in base?deepMerge(base[k],src[k]):src[k]);return out}
 function migrateOldState(){if(localStorage.getItem("minhasCaloriasCompleto"))return null;try{const old=JSON.parse(localStorage.getItem("caloriasApp")||"null");if(!old)return null;const n=clone(DEFAULT_STATE);n.profile.calorieGoal=Number(old.goal)||2000;n.profile={...n.profile,...(old.profile||{}),calorieGoal:Number(old.goal)||2000,macroTargets:old.macroTargets||n.profile.macroTargets,waterGoalMl:(Number(old.waterGoalCups)||8)*250};n.settings.dark=!!old.dark;n.days={};Object.entries(old.days||{}).forEach(([k,d])=>{n.days[k]={meals:{},water:[],note:"",mealPhotos:{}};n.mealNames.forEach(m=>n.days[k].meals[m]=clone(d[m]||[]).map(x=>({...x,id:x.id||uid(),fiber:x.fiber||0,sugar:x.sugar||0,sodium:x.sodium||0,chol:x.chol||0}))) });Object.entries(old.water||{}).forEach(([k,count])=>{n.days[k]=n.days[k]||{meals:{},water:[],note:"",mealPhotos:{}};n.mealNames.forEach(m=>n.days[k].meals[m]=n.days[k].meals[m]||[]);if(Number(count)>0)n.days[k].water=[{ml:Number(count)*250,time:"importado"}]});n.weights=clone(old.weights||[]);n.savedMeals=clone(old.savedMeals||[]);return n}catch(e){return null}}
 function upgradeState(s){
@@ -1667,8 +1659,79 @@ function calorieScheduleInfo(profile=state.profile){
   return {enabled,maintenance,requested,effective,maintenanceDay,deficitDay,approxKg:effective/7700};
 }
 
+function defaultDailyCaloriePlan(profile=state.profile){
+  const info=calorieScheduleInfo(profile);
+  const perDay=info.effective>0?Math.round(info.effective/6):500;
+  const maintenanceDay=Number(profile.maintenanceDay)||0;
+  const plan={};
+  for(let day=0;day<7;day++){
+    plan[day]=day===maintenanceDay
+      ?{mode:"maintenance",value:0}
+      :{mode:"deficit",value:perDay};
+  }
+  return plan;
+}
+
+function normalizedDailyCaloriePlan(profile=state.profile){
+  const src=profile.dailyCaloriePlan&&typeof profile.dailyCaloriePlan==="object"
+    ?profile.dailyCaloriePlan
+    :defaultDailyCaloriePlan(profile);
+  const out={};
+  for(let day=0;day<7;day++){
+    const item=src[day]||src[String(day)]||{};
+    const mode=["deficit","intake","maintenance"].includes(item.mode)?item.mode:"maintenance";
+    let value=Math.max(0,Number(item.value)||0);
+    if(mode==="deficit")value=Math.min(1000,value);
+    if(mode==="intake"&&value>0)value=Math.max(1200,Math.min(10000,value));
+    out[day]={mode,value};
+  }
+  return out;
+}
+
+function dailyPlanGoal(profile,date){
+  const maintenance=estimateAdultMaintenance(profile);
+  if(!(maintenance>0))return null;
+  const d=date instanceof Date?date:dateObj(date);
+  const item=normalizedDailyCaloriePlan(profile)[d.getDay()];
+  if(!item)return null;
+
+  if(item.mode==="maintenance")return Math.round(maintenance);
+  if(item.mode==="intake")return Math.round(Math.max(1200,item.value||maintenance));
+
+  const deficit=Math.max(0,Math.min(1000,item.value||0));
+  return Math.round(Math.max(1200,maintenance-deficit));
+}
+
+function dailyPlanWeeklyDeficit(profile=state.profile){
+  const maintenance=estimateAdultMaintenance(profile);
+  if(!(maintenance>0))return 0;
+  const plan=normalizedDailyCaloriePlan(profile);
+  let total=0;
+  for(let day=0;day<7;day++){
+    const item=plan[day];
+    if(item.mode==="deficit"){
+      total+=Math.max(0,maintenance-Math.max(1200,maintenance-Math.min(1000,item.value||0)));
+    }else if(item.mode==="intake"){
+      total+=maintenance-Math.max(1200,item.value||maintenance);
+    }
+  }
+  return Math.round(total);
+}
+
 function profileGoal(date=selectedDate){
-  const p=state.profile,info=calorieScheduleInfo(p);
+  const p=state.profile;
+
+  if(
+    p.objective==="lose" &&
+    p.caloriePlanMode==="weekday" &&
+    p.calorieScheduleEnabled===true &&
+    Number(p.age)>=20
+  ){
+    const varied=dailyPlanGoal(p,date);
+    if(varied!=null)return varied;
+  }
+
+  const info=calorieScheduleInfo(p);
   if(info.enabled){
     const d=date instanceof Date?date:dateObj(date);
     if(d.getDay()===info.maintenanceDay)return Math.round(info.maintenance);
@@ -3522,7 +3585,7 @@ const v11RenderAll=renderAll;renderAll=function(){v11RenderAll();renderPlanner()
 
 // Onboarding
 let obStep=0;
-function renderOb(){document.querySelectorAll("[data-ob-step]").forEach(x=>x.classList.toggle("hidden",Number(x.dataset.obStep)!==obStep));document.querySelectorAll("[data-ob-dot]").forEach(x=>x.classList.toggle("active",Number(x.dataset.obDot)<=obStep));obNext.textContent=obStep===2?"Concluir":"Continuar";if(obStep===2)setTimeout(updateOnboardingDeficit,0)}
+function renderOb(){document.querySelectorAll("[data-ob-step]").forEach(x=>x.classList.toggle("hidden",Number(x.dataset.obStep)!==obStep));document.querySelectorAll("[data-ob-dot]").forEach(x=>x.classList.toggle("active",Number(x.dataset.obDot)<=obStep));obNext.textContent=obStep===2?"Concluir":"Continuar";if(obStep===2)setTimeout(()=>{updateOnboardingDeficit();if(!obDailyPlanRows.children.length)renderDailyPlanRows("ob",defaultDailyCaloriePlan({sex:obSex.value,age:Number(obAge.value),weight:Number(obWeight.value),height:Number(obHeight.value),activity:Number(obActivity.value)||1.2,objective:obObjective.value,weeklyDeficitKcal:Number(obWeeklyDeficit.value)||3500,maintenanceDay:Number(obMaintenanceDay.value)||0,calorieScheduleEnabled:true}));setPlanMode("ob",obPlanMode)},0)}
 obNext.onclick=()=>{if(obStep<2){obStep++;renderOb();return}const age=Number(obAge.value),w=Number(obWeight.value),h=Number(obHeight.value),a=Number(obActivity.value)||1.2,sex=obSex.value,obj=obObjective.value;let calories=Number(obCalories.value)||0;if(!calories&&age>0&&w>0&&h>0){const bmr=10*w+6.25*h-5*age+(sex==="male"?5:-161),t=bmr*a;calories=Math.round(t+(obj==="lose"?-400:obj==="gain"?300:0))}Object.assign(state.profile,{age:age||null,weight:w||null,height:h||null,activity:a,sex,objective:obj,calorieGoal:calories||state.profile.calorieGoal});state.settings.tracked=[...new Set([...(state.settings.tracked||[]),...(obTrackFiber.checked?["fiber"]:[]),...(obTrackSodium.checked?["sodium"]:[])])];state.settings.onboarded=true;save();closeModal("onboardingModal");renderAll();toast("Configuração concluída.")};
 obSkip.onclick=()=>{state.settings.onboarded=true;save();closeModal("onboardingModal")};
 
@@ -3929,8 +3992,13 @@ editProfileBtn.onclick=()=>{
   profileWaterManualGoal.value=p.waterGoalMl||2000;
   calorieCalcResult.textContent="";
   setProfileWaterMode(p.waterGoalMode||"auto");
+
+  const mode=p.caloriePlanMode==="weekday"?"weekday":"fixed";
+  profilePlanMode=mode;
+  renderDailyPlanRows("profile",normalizedDailyCaloriePlan(p));
+  setPlanMode("profile",mode);
   updateProfileDeficit();
-  openModal("profileModal")
+  openModal("profileModal");
 };
 
 // Perfil: salva calorias + déficit semanal + água.
@@ -3949,19 +4017,37 @@ saveProfile.onclick=()=>{
 
   let weeklyDeficit=Math.max(0,Math.min(6000,Number(profileWeeklyDeficit.value)||0));
   const maintenanceDay=Math.max(0,Math.min(6,Number(profileMaintenanceDay.value)||0));
+  const dailyPlan=readDailyPlanRows("profile");
+  const chosenMode=profilePlanMode==="weekday"?"weekday":"fixed";
+
   const tempProfile={
     sex:newSex,age:newAge,weight:newWeight,height:newHeight,activity:newActivity,
     objective:newObjective,weeklyDeficitKcal:weeklyDeficit,maintenanceDay,
+    caloriePlanMode:chosenMode,dailyCaloriePlan:dailyPlan,
     calorieScheduleEnabled:newObjective==="lose"
   };
-  const info=calorieScheduleInfo(tempProfile);
+
   let scheduleEnabled=false;
 
-  if(newObjective==="lose"&&newAge>=20&&info.maintenance>0&&info.effective>0){
-    weeklyDeficit=info.effective;
-    g=Math.round(info.deficitDay);
-    scheduleEnabled=true;
-  }else if(!(g>=500)){
+  if(newObjective==="lose"&&newAge>=20){
+    if(chosenMode==="weekday"){
+      const maintenance=estimateAdultMaintenance(tempProfile);
+      if(maintenance>0){
+        const todayGoal=dailyPlanGoal(tempProfile,new Date());
+        if(todayGoal)g=todayGoal;
+        scheduleEnabled=true;
+      }
+    }else{
+      const info=calorieScheduleInfo(tempProfile);
+      if(info.maintenance>0&&info.effective>0){
+        weeklyDeficit=info.effective;
+        g=Math.round(info.deficitDay);
+        scheduleEnabled=true;
+      }
+    }
+  }
+
+  if(!(g>=500)){
     if(newAge>=20&&newWeight>0&&newHeight>0){
       const maintenance=estimateAdultMaintenance(tempProfile);
       g=Math.round(newObjective==="gain"?maintenance+300:maintenance);
@@ -3974,8 +4060,10 @@ saveProfile.onclick=()=>{
     sex:newSex,age:newAge,weight:newWeight,height:newHeight,
     activity:newActivity,objective:newObjective,targetWeight:Number(targetWeight.value)||null,
     calorieGoal:Math.round(g),
-    weeklyDeficitKcal:scheduleEnabled?weeklyDeficit:0,
+    weeklyDeficitKcal:weeklyDeficit,
     maintenanceDay,
+    caloriePlanMode:chosenMode,
+    dailyCaloriePlan:dailyPlan,
     calorieScheduleEnabled:scheduleEnabled,
     waterGoalMode:waterAuto?"auto":"manual",
     macroTargets:{p:Number(targetP.value)||0,c:Number(targetC.value)||0,f:Number(targetF.value)||0}
@@ -3994,7 +4082,8 @@ saveProfile.onclick=()=>{
   save();closeModal("profileModal");renderAll();
 
   if(newObjective==="lose"&&newAge<20)toast("Perfil salvo. Déficit automático não foi aplicado por idade.");
-  else if(scheduleEnabled)toast("Perfil e déficit semanal salvos.");
+  else if(scheduleEnabled&&chosenMode==="weekday")toast("Metas variáveis por dia salvas.");
+  else if(scheduleEnabled)toast("Déficit fixo semanal salvo.");
   else toast("Perfil e metas salvos.");
 };
 
@@ -4018,7 +4107,12 @@ window.editWeight=i=>{
 
 // Onboarding final: calorias variáveis + água.
 obNext.onclick=()=>{
-  if(obStep<2){obStep++;renderOb();if(obStep===2){updateObWaterPreview();updateOnboardingDeficit()}return}
+  if(obStep<2){
+    obStep++;
+    renderOb();
+    if(obStep===2){updateObWaterPreview();updateOnboardingDeficit()}
+    return;
+  }
 
   const age=Number(obAge.value),w=Number(obWeight.value),h=Number(obHeight.value),
         a=Number(obActivity.value)||1.2,sex=obSex.value,obj=obObjective.value;
@@ -4026,16 +4120,33 @@ obNext.onclick=()=>{
   let calories=Number(obCalories.value)||0;
   let weeklyDeficit=Math.max(0,Math.min(6000,Number(obWeeklyDeficit.value)||0));
   const maintenanceDay=Math.max(0,Math.min(6,Number(obMaintenanceDay.value)||0));
+  const chosenMode=obPlanMode==="weekday"?"weekday":"fixed";
+  const dailyPlan=readDailyPlanRows("ob");
 
-  const tempProfile={sex,age,weight:w,height:h,activity:a,objective:obj,weeklyDeficitKcal:weeklyDeficit,maintenanceDay,calorieScheduleEnabled:obj==="lose"};
-  const info=calorieScheduleInfo(tempProfile);
+  const tempProfile={
+    sex,age,weight:w,height:h,activity:a,objective:obj,
+    weeklyDeficitKcal:weeklyDeficit,maintenanceDay,
+    caloriePlanMode:chosenMode,dailyCaloriePlan:dailyPlan,
+    calorieScheduleEnabled:obj==="lose"
+  };
 
   let scheduleEnabled=false;
 
-  if(obj==="lose"&&age>=20&&info.maintenance>0&&info.effective>0){
-    weeklyDeficit=info.effective;
-    calories=Math.round(info.deficitDay);
-    scheduleEnabled=true;
+  if(obj==="lose"&&age>=20){
+    if(chosenMode==="weekday"){
+      const maintenance=estimateAdultMaintenance(tempProfile);
+      if(maintenance>0){
+        calories=dailyPlanGoal(tempProfile,new Date())||calories;
+        scheduleEnabled=true;
+      }
+    }else{
+      const info=calorieScheduleInfo(tempProfile);
+      if(info.maintenance>0&&info.effective>0){
+        weeklyDeficit=info.effective;
+        calories=Math.round(info.deficitDay);
+        scheduleEnabled=true;
+      }
+    }
   }else if(!calories&&age>=20&&w>0&&h>0){
     const maintenance=estimateAdultMaintenance(tempProfile);
     calories=Math.round(obj==="gain"?maintenance+300:maintenance);
@@ -4048,8 +4159,10 @@ obNext.onclick=()=>{
   Object.assign(state.profile,{
     age:age||null,weight:w||null,height:h||null,activity:a,sex,objective:obj,
     calorieGoal:calories||state.profile.calorieGoal,
-    weeklyDeficitKcal:scheduleEnabled?weeklyDeficit:0,
+    weeklyDeficitKcal:weeklyDeficit,
     maintenanceDay,
+    caloriePlanMode:chosenMode,
+    dailyCaloriePlan:dailyPlan,
     calorieScheduleEnabled:scheduleEnabled,
     waterGoalMode:autoWater?"auto":"manual",
     waterMlPerKg:35,
@@ -4061,7 +4174,8 @@ obNext.onclick=()=>{
   save();closeModal("onboardingModal");renderAll();
 
   if(obj==="lose"&&age<20)toast("Configuração salva. Déficit automático não foi aplicado por idade.");
-  else if(scheduleEnabled)toast("Déficit semanal e dia de manutenção configurados.");
+  else if(scheduleEnabled&&chosenMode==="weekday")toast("Metas variáveis por dia configuradas.");
+  else if(scheduleEnabled)toast("Déficit fixo semanal configurado.");
   else toast("Metas de calorias e água configuradas.");
 };
 
@@ -4439,12 +4553,16 @@ function weeklyEnergyBalance(){
 
     days.push({
       d,k,logged,future,kcal,balance,
-      maintenanceDay:schedule.enabled&&d.getDay()===schedule.maintenanceDay
+      maintenanceDay:(state.profile.caloriePlanMode==="weekday"&&state.profile.calorieScheduleEnabled===true)
+        ?normalizedDailyCaloriePlan(state.profile)[d.getDay()]?.mode==="maintenance"
+        :schedule.enabled&&d.getDay()===schedule.maintenanceDay
     });
   }
 
   const net=spent-consumed;
-  const target=schedule.enabled?Number(schedule.effective)||0:0;
+  const target=(state.profile.caloriePlanMode==="weekday"&&state.profile.calorieScheduleEnabled===true&&Number(state.profile.age)>=20)
+    ?Math.max(0,dailyPlanWeeklyDeficit(state.profile))
+    :(schedule.enabled?Number(schedule.effective)||0:0);
 
   return {
     maintenance,
@@ -4557,6 +4675,188 @@ renderWeeklyOverview=function(){
       <b>${fmt(data.spent)} kcal</b>
     </div>`);
 };
+
+
+// ============================================================
+// PLANO CALÓRICO: FIXO OU VARIADO POR DIA
+// ============================================================
+const CAL_PLAN_DAYS=[
+  {day:1,label:"Segunda"},
+  {day:2,label:"Terça"},
+  {day:3,label:"Quarta"},
+  {day:4,label:"Quinta"},
+  {day:5,label:"Sexta"},
+  {day:6,label:"Sábado"},
+  {day:0,label:"Domingo"}
+];
+
+let obPlanMode="fixed";
+let profilePlanMode="fixed";
+
+function caloriePlanRowHTML(prefix,day,label,item){
+  const mode=item?.mode||"maintenance";
+  const value=Number(item?.value)||0;
+  return `
+    <div class="daily-cal-row ${mode==="maintenance"?"is-maintenance":""}" data-plan-row="${day}">
+      <div class="daily-cal-day">${label}</div>
+      <select class="daily-cal-mode" data-plan-mode="${day}">
+        <option value="deficit" ${mode==="deficit"?"selected":""}>Déficit</option>
+        <option value="intake" ${mode==="intake"?"selected":""}>Consumo</option>
+        <option value="maintenance" ${mode==="maintenance"?"selected":""}>Manutenção</option>
+      </select>
+      <input class="daily-cal-value" data-plan-value="${day}" type="number"
+        min="${mode==="intake"?1200:0}" max="${mode==="intake"?10000:1000}" step="50"
+        value="${mode==="maintenance"?"":value}"
+        placeholder="${mode==="intake"?"Ex.: 2200":"Ex.: 700"}">
+      <div class="daily-cal-target" data-plan-target="${day}">—</div>
+    </div>`;
+}
+
+function renderDailyPlanRows(prefix,plan){
+  const box=document.getElementById(prefix+"DailyPlanRows");
+  if(!box)return;
+  box.innerHTML=CAL_PLAN_DAYS.map(x=>caloriePlanRowHTML(prefix,x.day,x.label,plan[x.day])).join("");
+
+  box.querySelectorAll("[data-plan-mode]").forEach(el=>{
+    el.addEventListener("change",()=>{
+      const row=el.closest(".daily-cal-row");
+      const input=row.querySelector("[data-plan-value]");
+      const mode=el.value;
+      row.classList.toggle("is-maintenance",mode==="maintenance");
+      input.disabled=mode==="maintenance";
+      input.min=mode==="intake"?"1200":"0";
+      input.max=mode==="intake"?"10000":"1000";
+      input.placeholder=mode==="intake"?"Ex.: 2200":"Ex.: 700";
+      if(mode==="maintenance")input.value="";
+      else if(!Number(input.value))input.value=mode==="deficit"?"500":"2000";
+      updateDailyPlanPreview(prefix);
+    });
+  });
+
+  box.querySelectorAll("[data-plan-value]").forEach(el=>{
+    const mode=box.querySelector(`[data-plan-mode="${el.dataset.planValue}"]`)?.value;
+    el.disabled=mode==="maintenance";
+    el.addEventListener("input",()=>updateDailyPlanPreview(prefix));
+  });
+
+  updateDailyPlanPreview(prefix);
+}
+
+function readDailyPlanRows(prefix){
+  const box=document.getElementById(prefix+"DailyPlanRows");
+  const plan={};
+  CAL_PLAN_DAYS.forEach(({day})=>{
+    const mode=box?.querySelector(`[data-plan-mode="${day}"]`)?.value||"maintenance";
+    let value=Number(box?.querySelector(`[data-plan-value="${day}"]`)?.value)||0;
+    if(mode==="deficit")value=Math.max(0,Math.min(1000,value));
+    if(mode==="intake")value=Math.max(1200,Math.min(10000,value||1200));
+    if(mode==="maintenance")value=0;
+    plan[day]={mode,value};
+  });
+  return plan;
+}
+
+function tempProfileForPlan(prefix){
+  const isOb=prefix==="ob";
+  return {
+    sex:isOb?obSex.value:profileSex.value,
+    age:Number(isOb?obAge.value:profileAge.value),
+    weight:Number(isOb?obWeight.value:profileWeight.value),
+    height:Number(isOb?obHeight.value:profileHeight.value),
+    activity:Number(isOb?obActivity.value:profileActivity.value)||1.2,
+    objective:isOb?obObjective.value:profileObjective.value,
+    caloriePlanMode:"weekday",
+    dailyCaloriePlan:readDailyPlanRows(prefix),
+    calorieScheduleEnabled:true
+  };
+}
+
+function updateDailyPlanPreview(prefix){
+  const p=tempProfileForPlan(prefix);
+  const maintenance=estimateAdultMaintenance(p);
+  const box=document.getElementById(prefix+"DailyPlanRows");
+  const summary=document.getElementById(prefix+"DailyPlanSummary");
+  if(!box||!summary)return;
+
+  if(!(Number(p.age)>=20)){
+    box.querySelectorAll("[data-plan-target]").forEach(x=>x.textContent="Déficit automático não aplicado abaixo de 20 anos.");
+    summary.innerHTML="<b>Menores de 20 anos:</b> o app não aplica automaticamente metas de déficit.";
+    return;
+  }
+
+  if(!(maintenance>0)){
+    box.querySelectorAll("[data-plan-target]").forEach(x=>x.textContent="Preencha idade, peso e altura.");
+    summary.textContent="Preencha seus dados para calcular o gasto de manutenção.";
+    return;
+  }
+
+  const plan=p.dailyCaloriePlan;
+  let weeklyDeficit=0;
+
+  CAL_PLAN_DAYS.forEach(({day,label})=>{
+    const item=plan[day];
+    let goal=maintenance;
+    let description="manutenção";
+
+    if(item.mode==="deficit"){
+      goal=Math.max(1200,maintenance-item.value);
+      const effective=Math.max(0,maintenance-goal);
+      weeklyDeficit+=effective;
+      description=`déficit ${fmt(effective)} kcal`;
+    }else if(item.mode==="intake"){
+      goal=Math.max(1200,item.value);
+      const balance=maintenance-goal;
+      weeklyDeficit+=balance;
+      description=balance>=0?`déficit estimado ${fmt(balance)} kcal`:`superávit estimado ${fmt(Math.abs(balance))} kcal`;
+    }
+
+    const target=box.querySelector(`[data-plan-target="${day}"]`);
+    if(target)target.innerHTML=`Meta calculada: <b>${fmt(goal)} kcal</b> • ${description}`;
+  });
+
+  const kg=weeklyDeficit/7700;
+  const balanceLabel=weeklyDeficit>=0?"Déficit semanal planejado":"Superávit semanal planejado";
+  summary.innerHTML=`
+    <b>Manutenção estimada:</b> ${fmt(maintenance)} kcal/dia<br>
+    <b>${balanceLabel}:</b> ${fmt(Math.abs(weeklyDeficit))} kcal
+    ${weeklyDeficit>0?` ≈ ${kg.toFixed(2).replace(".",",")} kg pela regra prática de 7.700 kcal/kg`:""}
+  `;
+}
+
+function setPlanMode(prefix,mode){
+  const fixedBtn=document.getElementById(prefix+"PlanFixedBtn");
+  const weekdayBtn=document.getElementById(prefix+"PlanWeekdayBtn");
+  const fixedArea=document.getElementById(prefix+"FixedPlanArea");
+  const weekdayArea=document.getElementById(prefix+"WeekdayPlanArea");
+
+  if(prefix==="ob")obPlanMode=mode;
+  else profilePlanMode=mode;
+
+  fixedBtn?.classList.toggle("active",mode==="fixed");
+  weekdayBtn?.classList.toggle("active",mode==="weekday");
+  fixedArea?.classList.toggle("hidden",mode!=="fixed");
+  weekdayArea?.classList.toggle("hidden",mode!=="weekday");
+
+  if(mode==="weekday")updateDailyPlanPreview(prefix);
+}
+
+function initPlanModeButtons(){
+  obPlanFixedBtn.onclick=()=>setPlanMode("ob","fixed");
+  obPlanWeekdayBtn.onclick=()=>setPlanMode("ob","weekday");
+  profilePlanFixedBtn.onclick=()=>setPlanMode("profile","fixed");
+  profilePlanWeekdayBtn.onclick=()=>setPlanMode("profile","weekday");
+
+  [obSex,obAge,obWeight,obHeight,obActivity].forEach(el=>{
+    el.addEventListener("input",()=>{if(obPlanMode==="weekday")updateDailyPlanPreview("ob")});
+    el.addEventListener("change",()=>{if(obPlanMode==="weekday")updateDailyPlanPreview("ob")});
+  });
+  [profileSex,profileAge,profileWeight,profileHeight,profileActivity].forEach(el=>{
+    el.addEventListener("input",()=>{if(profilePlanMode==="weekday")updateDailyPlanPreview("profile")});
+    el.addEventListener("change",()=>{if(profilePlanMode==="weekday")updateDailyPlanPreview("profile")});
+  });
+}
+
+initPlanModeButtons();
 
 // PWA
 if("serviceWorker" in navigator && location.protocol.startsWith("http")){
