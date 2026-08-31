@@ -1444,8 +1444,18 @@ body.dark .daily-cal-row{
 
     <div id="profileWeekdayPlanArea" class="hidden">
       <p class="note" style="margin-top:8px">
-        Em <b>Déficit</b>, a meta é gasto estimado − déficit. Em <b>Consumo</b>, vc define diretamente a meta de kcal. Em <b>Manutenção</b>, a meta fica igual ao gasto estimado.
+        Em <b>Déficit</b>, a meta é manutenção de referência − déficit. Em <b>Consumo</b>, vc define diretamente a meta de kcal. Em <b>Manutenção</b>, a meta fica igual à manutenção de referência.
       </p>
+
+      <div class="water-auto-box hidden" id="profileMaintenanceReferenceBox" style="margin-top:10px">
+        <b>🧭 Manutenção de referência</b>
+        <p class="note" style="margin-top:6px">
+          Para menores de 20 anos, o app não calcula esse valor com fórmula adulta. Use aqui o valor de manutenção definido pelo profissional que acompanha vc.
+        </p>
+        <label>Manutenção de referência (kcal/dia)</label>
+        <input id="profileMaintenanceReference" type="number" min="500" max="10000" step="10" placeholder="Ex.: 2590">
+      </div>
+
       <div class="daily-cal-plan" id="profileDailyPlanRows"></div>
       <div class="insight-note" id="profileDailyPlanSummary" style="margin-top:10px"></div>
     </div>
@@ -1735,7 +1745,7 @@ const BASE_FOODS=[
  {n:"Brócolis cozido",k:25,p:2.1,c:4.4,f:.4,fiber:3.3,sugar:1.4,sodium:33,chol:0,servingG:100,s:"Base brasileira"}
 ];
 const DEFAULT_MEALS=["Café da manhã","Almoço","Lanche","Jantar","Ceia"];
-const DEFAULT_STATE={version:15,profile:{sex:"male",age:null,weight:null,height:null,activity:1.2,objective:"maintain",calorieGoal:2000,targetWeight:null,weeklyDeficitKcal:0,maintenanceDay:0,calorieScheduleEnabled:false,caloriePlanMode:"fixed",dailyCaloriePlan:null,waterGoalMl:2000,waterGoalMode:"auto",waterMlPerKg:35,macroTargets:{p:0,c:0,f:0},mealTargets:{},nutrientTargets:{}},settings:{dark:false,bg:"#667eea",tracked:["fiber","sugar","sodium","chol"],homeCards:{calories:true,progress:true,smart:true,quick:true,suggestions:true,streak:true,meals:true,notes:true},onboarded:false,fontScale:"normal",reduceMotion:false},days:{},plans:{},shoppingList:[],trash:[],weights:[],recipes:[],customFoods:[],favorites:[],recentFoods:[],savedMeals:[],mealNames:[...DEFAULT_MEALS],reminders:[],waterContainers:[{id:"cup250",name:"Copo",ml:250},{id:"bottle500",name:"Garrafa",ml:500}],offCache:{},onlineProductCatalog:[],calorieWeekOverrides:{},calorieSwapReviews:{},autoBackups:[]};
+const DEFAULT_STATE={version:15,profile:{sex:"male",age:null,weight:null,height:null,activity:1.2,objective:"maintain",calorieGoal:2000,targetWeight:null,weeklyDeficitKcal:0,maintenanceDay:0,calorieScheduleEnabled:false,caloriePlanMode:"fixed",dailyCaloriePlan:null,maintenanceReferenceKcal:null,waterGoalMl:2000,waterGoalMode:"auto",waterMlPerKg:35,macroTargets:{p:0,c:0,f:0},mealTargets:{},nutrientTargets:{}},settings:{dark:false,bg:"#667eea",tracked:["fiber","sugar","sodium","chol"],homeCards:{calories:true,progress:true,smart:true,quick:true,suggestions:true,streak:true,meals:true,notes:true},onboarded:false,fontScale:"normal",reduceMotion:false},days:{},plans:{},shoppingList:[],trash:[],weights:[],recipes:[],customFoods:[],favorites:[],recentFoods:[],savedMeals:[],mealNames:[...DEFAULT_MEALS],reminders:[],waterContainers:[{id:"cup250",name:"Copo",ml:250},{id:"bottle500",name:"Garrafa",ml:500}],offCache:{},onlineProductCatalog:[],calorieWeekOverrides:{},calorieSwapReviews:{},autoBackups:[]};
 function deepMerge(base,src){if(Array.isArray(base))return Array.isArray(src)?src:base;if(typeof base!=="object"||base===null)return src??base;const out={...base};if(src&&typeof src==="object")Object.keys(src).forEach(k=>out[k]=k in base?deepMerge(base[k],src[k]):src[k]);return out}
 function migrateOldState(){if(localStorage.getItem("minhasCaloriasCompleto"))return null;try{const old=JSON.parse(localStorage.getItem("caloriasApp")||"null");if(!old)return null;const n=clone(DEFAULT_STATE);n.profile.calorieGoal=Number(old.goal)||2000;n.profile={...n.profile,...(old.profile||{}),calorieGoal:Number(old.goal)||2000,macroTargets:old.macroTargets||n.profile.macroTargets,waterGoalMl:(Number(old.waterGoalCups)||8)*250};n.settings.dark=!!old.dark;n.days={};Object.entries(old.days||{}).forEach(([k,d])=>{n.days[k]={meals:{},water:[],note:"",mealPhotos:{}};n.mealNames.forEach(m=>n.days[k].meals[m]=clone(d[m]||[]).map(x=>({...x,id:x.id||uid(),fiber:x.fiber||0,sugar:x.sugar||0,sodium:x.sodium||0,chol:x.chol||0}))) });Object.entries(old.water||{}).forEach(([k,count])=>{n.days[k]=n.days[k]||{meals:{},water:[],note:"",mealPhotos:{}};n.mealNames.forEach(m=>n.days[k].meals[m]=n.days[k].meals[m]||[]);if(Number(count)>0)n.days[k].water=[{ml:Number(count)*250,time:"importado"}]});n.weights=clone(old.weights||[]);n.savedMeals=clone(old.savedMeals||[]);return n}catch(e){return null}}
 function upgradeState(s){
@@ -1746,6 +1756,21 @@ function upgradeState(s){
   Object.values(s.days||{}).forEach(d=>{if(d&&"exercises" in d)delete d.exercises});
   s.profile=s.profile||{};s.profile.nutrientTargets=s.profile.nutrientTargets||{};
   s.plans=s.plans||{};s.shoppingList=Array.isArray(s.shoppingList)?s.shoppingList:[];s.trash=Array.isArray(s.trash)?s.trash:[];s.calorieWeekOverrides=s.calorieWeekOverrides&&typeof s.calorieWeekOverrides==="object"?s.calorieWeekOverrides:{};s.calorieSwapReviews=s.calorieSwapReviews&&typeof s.calorieSwapReviews==="object"?s.calorieSwapReviews:{};
+if(s.profile){
+  if(!(Number(s.profile.maintenanceReferenceKcal)>0)&&Number(s.profile.age)>0&&Number(s.profile.age)<20){
+    const legacyReference=Number(s.profile.calorieGoal)||0;
+    if(legacyReference>0)s.profile.maintenanceReferenceKcal=legacyReference;
+  }
+  if(
+    s.profile.objective==="lose" &&
+    s.profile.caloriePlanMode==="weekday" &&
+    Number(s.profile.age)>0 &&
+    Number(s.profile.age)<20 &&
+    Number(s.profile.maintenanceReferenceKcal)>0
+  ){
+    s.profile.calorieScheduleEnabled=true;
+  }
+}
   s.waterContainers=Array.isArray(s.waterContainers)&&s.waterContainers.length?s.waterContainers:[{id:"cup250",name:"Copo",ml:250},{id:"bottle500",name:"Garrafa",ml:500}];
   if(oldVersion>0&&oldVersion<13)s.settings.onboarded=true;
   else if(s.settings.onboarded==null)s.settings.onboarded=!!localStorage.getItem("minhasCaloriasCompleto");
@@ -1789,6 +1814,16 @@ function estimateAdultMaintenance(profile=state.profile){
   if(!(age>=20&&w>0&&h>0))return 0;
   const bmr=10*w+6.25*h-5*age+(profile.sex==="male"?5:-161);
   return Math.max(0,bmr*a);
+}
+
+function estimatePlanMaintenance(profile=state.profile){
+  const age=Number(profile?.age)||0;
+  if(age>=20)return estimateAdultMaintenance(profile);
+
+  // Under 20: never derive maintenance from the adult formula.
+  // This must be a manually supplied professional reference.
+  const manual=Number(profile?.maintenanceReferenceKcal)||0;
+  return manual>0?manual:0;
 }
 
 function requestedWeeklyDeficit(profile=state.profile){
@@ -1870,7 +1905,7 @@ function effectiveDailyPlanItem(profile,date){
 }
 
 function dailyPlanGoal(profile,date){
-  const maintenance=estimateAdultMaintenance(profile);
+  const maintenance=estimatePlanMaintenance(profile);
   if(!(maintenance>0))return null;
   const d=date instanceof Date?date:dateObj(date);
   const item=effectiveDailyPlanItem(profile,d);
@@ -1907,16 +1942,15 @@ function swapWeekPlanItems(dateA,dateB){
 }
 
 function dailyPlanWeeklyDeficit(profile=state.profile){
-  const maintenance=estimateAdultMaintenance(profile);
-  if(!(maintenance>0))return 0;
+  const maintenance=estimatePlanMaintenance(profile);
   const plan=normalizedDailyCaloriePlan(profile);
   let total=0;
   for(let day=0;day<7;day++){
     const item=plan[day];
     if(item.mode==="deficit"){
-      total+=Math.max(0,maintenance-Math.max(1200,maintenance-Math.min(1000,item.value||0)));
-    }else if(item.mode==="intake"){
-      total+=maintenance-Math.max(1200,item.value||maintenance);
+      total+=Math.max(0,Math.min(1000,Number(item.value)||0));
+    }else if(item.mode==="intake"&&maintenance>0){
+      total+=maintenance-Math.max(0,Number(item.value)||0);
     }
   }
   return Math.round(total);
@@ -1928,8 +1962,7 @@ function profileGoal(date=selectedDate){
   if(
     p.objective==="lose" &&
     p.caloriePlanMode==="weekday" &&
-    p.calorieScheduleEnabled===true &&
-    Number(p.age)>=20
+    p.calorieScheduleEnabled===true
   ){
     const varied=dailyPlanGoal(p,date);
     if(varied!=null)return varied;
@@ -4195,6 +4228,7 @@ editProfileBtn.onclick=()=>{
   profileSex.value=p.sex;profileAge.value=p.age||"";profileWeight.value=p.weight||"";profileHeight.value=p.height||"";
   profileActivity.value=p.activity||1.2;profileObjective.value=p.objective||"maintain";targetWeight.value=p.targetWeight||"";
   profileWeeklyDeficit.value=p.weeklyDeficitKcal||3500;profileMaintenanceDay.value=String(p.maintenanceDay??0);
+  profileMaintenanceReference.value=p.maintenanceReferenceKcal||((Number(p.age)>0&&Number(p.age)<20)?(p.calorieGoal||""):"");
   calorieGoalInput.value=p.calorieGoal||2000;targetP.value=p.macroTargets.p||0;targetC.value=p.macroTargets.c||0;targetF.value=p.macroTargets.f||0;
   profileWaterManualGoal.value=p.waterGoalMl||2000;
   calorieCalcResult.textContent="";
@@ -4219,6 +4253,7 @@ saveProfile.onclick=()=>{
   const newObjective=profileObjective.value;
   const newSex=profileSex.value;
   const manualWater=Number(profileWaterManualGoal.value);
+  const maintenanceReference=Math.max(0,Number(profileMaintenanceReference.value)||0);
 
   if(!waterAuto&&!(manualWater>=250))return toast("Meta de água inválida.");
 
@@ -4231,20 +4266,26 @@ saveProfile.onclick=()=>{
     sex:newSex,age:newAge,weight:newWeight,height:newHeight,activity:newActivity,
     objective:newObjective,weeklyDeficitKcal:weeklyDeficit,maintenanceDay,
     caloriePlanMode:chosenMode,dailyCaloriePlan:dailyPlan,
+    maintenanceReferenceKcal:maintenanceReference,
     calorieScheduleEnabled:newObjective==="lose"
   };
 
   let scheduleEnabled=false;
 
-  if(newObjective==="lose"&&newAge>=20){
+  if(newObjective==="lose"){
     if(chosenMode==="weekday"){
-      const maintenance=estimateAdultMaintenance(tempProfile);
+      const maintenance=estimatePlanMaintenance(tempProfile);
+
+      if(newAge<20&&!(maintenanceReference>=500)){
+        return toast("Informe a manutenção de referência definida pelo profissional para usar a meta variada.");
+      }
+
       if(maintenance>0){
         const todayGoal=dailyPlanGoal(tempProfile,new Date());
         if(todayGoal)g=todayGoal;
         scheduleEnabled=true;
       }
-    }else{
+    }else if(newAge>=20){
       const info=calorieScheduleInfo(tempProfile);
       if(info.maintenance>0&&info.effective>0){
         weeklyDeficit=info.effective;
@@ -4271,6 +4312,7 @@ saveProfile.onclick=()=>{
     maintenanceDay,
     caloriePlanMode:chosenMode,
     dailyCaloriePlan:dailyPlan,
+    maintenanceReferenceKcal:maintenanceReference||null,
     calorieScheduleEnabled:scheduleEnabled,
     waterGoalMode:waterAuto?"auto":"manual",
     macroTargets:{p:Number(targetP.value)||0,c:Number(targetC.value)||0,f:Number(targetF.value)||0}
@@ -4288,7 +4330,7 @@ saveProfile.onclick=()=>{
 
   save();closeModal("profileModal");renderAll();
 
-  if(newObjective==="lose"&&newAge<20)toast("Perfil salvo. Déficit automático não foi aplicado por idade.");
+  if(scheduleEnabled&&chosenMode==="weekday"&&newAge<20)toast("Metas variáveis salvas usando a manutenção de referência.");
   else if(scheduleEnabled&&chosenMode==="weekday")toast("Metas variáveis por dia salvas.");
   else if(scheduleEnabled)toast("Déficit fixo semanal salvo.");
   else toast("Perfil e metas salvos.");
@@ -4860,7 +4902,7 @@ function mondayOfWeek(date=new Date()){
 }
 
 function weeklyEnergyBalance(){
-  const maintenance=estimateAdultMaintenance(state.profile);
+  const maintenance=estimatePlanMaintenance(state.profile);
   const schedule=calorieScheduleInfo(state.profile);
   const start=mondayOfWeek(new Date());
   const today=new Date();
@@ -4898,7 +4940,7 @@ function weeklyEnergyBalance(){
   }
 
   const net=spent-consumed;
-  const target=(state.profile.caloriePlanMode==="weekday"&&state.profile.calorieScheduleEnabled===true&&Number(state.profile.age)>=20)
+  const target=(state.profile.caloriePlanMode==="weekday"&&state.profile.calorieScheduleEnabled===true)
     ?Math.max(0,dailyPlanWeeklyDeficit(state.profile))
     :(schedule.enabled?Number(schedule.effective)||0:0);
 
@@ -5105,47 +5147,55 @@ function tempProfileForPlan(prefix){
     objective:isOb?obObjective.value:profileObjective.value,
     caloriePlanMode:"weekday",
     dailyCaloriePlan:readDailyPlanRows(prefix),
+    maintenanceReferenceKcal:isOb
+      ?(Number(obCalories?.value)||0)
+      :(Number(document.getElementById("profileMaintenanceReference")?.value)||0),
     calorieScheduleEnabled:true
   };
 }
 
 function updateDailyPlanPreview(prefix){
   const p=tempProfileForPlan(prefix);
-  const maintenance=estimateAdultMaintenance(p);
+  const maintenance=estimatePlanMaintenance(p);
   const box=document.getElementById(prefix+"DailyPlanRows");
   const summary=document.getElementById(prefix+"DailyPlanSummary");
   if(!box||!summary)return;
 
-  if(!(Number(p.age)>=20)){
-    box.querySelectorAll("[data-plan-target]").forEach(x=>x.textContent="Déficit automático não aplicado abaixo de 20 anos.");
-    summary.innerHTML="<b>Menores de 20 anos:</b> o app não aplica automaticamente metas de déficit.";
-    return;
+  if(prefix==="profile"){
+    const refBox=document.getElementById("profileMaintenanceReferenceBox");
+    if(refBox)refBox.classList.toggle("hidden",Number(p.age)>=20);
   }
 
   if(!(maintenance>0)){
-    box.querySelectorAll("[data-plan-target]").forEach(x=>x.textContent="Preencha idade, peso e altura.");
-    summary.textContent="Preencha seus dados para calcular o gasto de manutenção.";
+    const msg=Number(p.age)<20
+      ?"Informe a manutenção de referência definida pelo profissional."
+      :"Preencha idade, peso e altura.";
+    box.querySelectorAll("[data-plan-target]").forEach(x=>x.textContent=msg);
+    summary.textContent=msg;
     return;
   }
 
   const plan=p.dailyCaloriePlan;
   let weeklyDeficit=0;
 
-  CAL_PLAN_DAYS.forEach(({day,label})=>{
+  CAL_PLAN_DAYS.forEach(({day})=>{
     const item=plan[day];
     let goal=maintenance;
     let description="manutenção";
 
     if(item.mode==="deficit"){
-      goal=Math.max(1200,maintenance-item.value);
+      const requested=Math.max(0,Math.min(1000,Number(item.value)||0));
+      goal=Math.max(1200,maintenance-requested);
       const effective=Math.max(0,maintenance-goal);
       weeklyDeficit+=effective;
       description=`déficit ${fmt(effective)} kcal`;
     }else if(item.mode==="intake"){
-      goal=Math.max(1200,item.value);
+      goal=Math.max(1200,Number(item.value)||maintenance);
       const balance=maintenance-goal;
       weeklyDeficit+=balance;
-      description=balance>=0?`déficit estimado ${fmt(balance)} kcal`:`superávit estimado ${fmt(Math.abs(balance))} kcal`;
+      description=balance>=0
+        ?`déficit estimado ${fmt(balance)} kcal`
+        :`superávit estimado ${fmt(Math.abs(balance))} kcal`;
     }
 
     const target=box.querySelector(`[data-plan-target="${day}"]`);
@@ -5155,12 +5205,11 @@ function updateDailyPlanPreview(prefix){
   const kg=weeklyDeficit/7700;
   const balanceLabel=weeklyDeficit>=0?"Déficit semanal planejado":"Superávit semanal planejado";
   summary.innerHTML=`
-    <b>Manutenção estimada:</b> ${fmt(maintenance)} kcal/dia<br>
+    <b>${Number(p.age)<20?"Manutenção de referência":"Manutenção estimada"}:</b> ${fmt(maintenance)} kcal/dia<br>
     <b>${balanceLabel}:</b> ${fmt(Math.abs(weeklyDeficit))} kcal
     ${weeklyDeficit>0?` ≈ ${kg.toFixed(2).replace(".",",")} kg pela regra prática de 7.700 kcal/kg`:""}
   `;
 }
-
 function setPlanMode(prefix,mode){
   const fixedBtn=document.getElementById(prefix+"PlanFixedBtn");
   const weekdayBtn=document.getElementById(prefix+"PlanWeekdayBtn");
@@ -5188,7 +5237,7 @@ function initPlanModeButtons(){
     el.addEventListener("input",()=>{if(obPlanMode==="weekday")updateDailyPlanPreview("ob")});
     el.addEventListener("change",()=>{if(obPlanMode==="weekday")updateDailyPlanPreview("ob")});
   });
-  [profileSex,profileAge,profileWeight,profileHeight,profileActivity].forEach(el=>{
+  [profileSex,profileAge,profileWeight,profileHeight,profileActivity,profileMaintenanceReference].forEach(el=>{
     el.addEventListener("input",()=>{if(profilePlanMode==="weekday")updateDailyPlanPreview("profile")});
     el.addEventListener("change",()=>{if(profilePlanMode==="weekday")updateDailyPlanPreview("profile")});
   });
@@ -5207,7 +5256,7 @@ function variedGoalModeActive(){
   return state.profile?.objective==="lose"
     && state.profile?.caloriePlanMode==="weekday"
     && state.profile?.calorieScheduleEnabled===true
-    && Number(state.profile?.age)>=20;
+    && estimatePlanMaintenance(state.profile)>0;
 }
 
 function updateSwapGoalMenuVisibility(){
@@ -5233,7 +5282,7 @@ function planItemShortLabel(item){
 }
 
 function goalForPlanItem(item){
-  const maintenance=estimateAdultMaintenance(state.profile);
+  const maintenance=estimatePlanMaintenance(state.profile);
   if(!(maintenance>0)||!item)return null;
   if(item.mode==="maintenance")return Math.round(maintenance);
   if(item.mode==="intake")return Math.round(Math.max(1200,Number(item.value)||maintenance));
@@ -5310,7 +5359,7 @@ menuSwapGoal.onclick=()=>{
 };
 
 function completedDayActualDeficit(date){
-  const maintenance=estimateAdultMaintenance(state.profile);
+  const maintenance=estimatePlanMaintenance(state.profile);
   if(!(maintenance>0))return null;
   const day=state.days[localDateKey(date)];
   if(!hasFoodLog(day))return null;
@@ -5530,8 +5579,11 @@ function renderProfileWeeklyPlanSummaryFinal(){
       objective:document.getElementById("profileObjective")?.value||"lose"
     };
     const maintenance=Number(
-      typeof estimateAdultMaintenance==="function"
-        ? estimateAdultMaintenance(profileLike)
+      typeof estimatePlanMaintenance==="function"
+        ? estimatePlanMaintenance({
+            ...profileLike,
+            maintenanceReferenceKcal:Number(document.getElementById("profileMaintenanceReference")?.value)||0
+          })
         : 0
     )||0;
 
