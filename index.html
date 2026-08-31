@@ -1458,6 +1458,7 @@ body.dark .daily-cal-row{
 
       <div class="daily-cal-plan" id="profileDailyPlanRows"></div>
       <div class="insight-note" id="profileDailyPlanSummary" style="margin-top:10px"></div>
+      <p class="note" id="profileWeekdayStartNote" style="margin-top:8px"></p>
     </div>
   </div>
 
@@ -1745,7 +1746,7 @@ const BASE_FOODS=[
  {n:"Brócolis cozido",k:25,p:2.1,c:4.4,f:.4,fiber:3.3,sugar:1.4,sodium:33,chol:0,servingG:100,s:"Base brasileira"}
 ];
 const DEFAULT_MEALS=["Café da manhã","Almoço","Lanche","Jantar","Ceia"];
-const DEFAULT_STATE={version:15,profile:{sex:"male",age:null,weight:null,height:null,activity:1.2,objective:"maintain",calorieGoal:2000,targetWeight:null,weeklyDeficitKcal:0,maintenanceDay:0,calorieScheduleEnabled:false,caloriePlanMode:"fixed",dailyCaloriePlan:null,maintenanceReferenceKcal:null,waterGoalMl:2000,waterGoalMode:"auto",waterMlPerKg:35,macroTargets:{p:0,c:0,f:0},mealTargets:{},nutrientTargets:{}},settings:{dark:false,bg:"#667eea",tracked:["fiber","sugar","sodium","chol"],homeCards:{calories:true,progress:true,smart:true,quick:true,suggestions:true,streak:true,meals:true,notes:true},onboarded:false,fontScale:"normal",reduceMotion:false},days:{},plans:{},shoppingList:[],trash:[],weights:[],recipes:[],customFoods:[],favorites:[],recentFoods:[],savedMeals:[],mealNames:[...DEFAULT_MEALS],reminders:[],waterContainers:[{id:"cup250",name:"Copo",ml:250},{id:"bottle500",name:"Garrafa",ml:500}],offCache:{},onlineProductCatalog:[],calorieWeekOverrides:{},calorieSwapReviews:{},autoBackups:[]};
+const DEFAULT_STATE={version:15,profile:{sex:"male",age:null,weight:null,height:null,activity:1.2,objective:"maintain",calorieGoal:2000,targetWeight:null,weeklyDeficitKcal:0,maintenanceDay:0,calorieScheduleEnabled:false,caloriePlanMode:"fixed",dailyCaloriePlan:null,maintenanceReferenceKcal:null,weekdayPlanStartDate:null,historicalFixedCalorieGoal:null,waterGoalMl:2000,waterGoalMode:"auto",waterMlPerKg:35,macroTargets:{p:0,c:0,f:0},mealTargets:{},nutrientTargets:{}},settings:{dark:false,bg:"#667eea",tracked:["fiber","sugar","sodium","chol"],homeCards:{calories:true,progress:true,smart:true,quick:true,suggestions:true,streak:true,meals:true,notes:true},onboarded:false,fontScale:"normal",reduceMotion:false},days:{},plans:{},shoppingList:[],trash:[],weights:[],recipes:[],customFoods:[],favorites:[],recentFoods:[],savedMeals:[],mealNames:[...DEFAULT_MEALS],reminders:[],waterContainers:[{id:"cup250",name:"Copo",ml:250},{id:"bottle500",name:"Garrafa",ml:500}],offCache:{},onlineProductCatalog:[],calorieWeekOverrides:{},calorieSwapReviews:{},autoBackups:[]};
 function deepMerge(base,src){if(Array.isArray(base))return Array.isArray(src)?src:base;if(typeof base!=="object"||base===null)return src??base;const out={...base};if(src&&typeof src==="object")Object.keys(src).forEach(k=>out[k]=k in base?deepMerge(base[k],src[k]):src[k]);return out}
 function migrateOldState(){if(localStorage.getItem("minhasCaloriasCompleto"))return null;try{const old=JSON.parse(localStorage.getItem("caloriasApp")||"null");if(!old)return null;const n=clone(DEFAULT_STATE);n.profile.calorieGoal=Number(old.goal)||2000;n.profile={...n.profile,...(old.profile||{}),calorieGoal:Number(old.goal)||2000,macroTargets:old.macroTargets||n.profile.macroTargets,waterGoalMl:(Number(old.waterGoalCups)||8)*250};n.settings.dark=!!old.dark;n.days={};Object.entries(old.days||{}).forEach(([k,d])=>{n.days[k]={meals:{},water:[],note:"",mealPhotos:{}};n.mealNames.forEach(m=>n.days[k].meals[m]=clone(d[m]||[]).map(x=>({...x,id:x.id||uid(),fiber:x.fiber||0,sugar:x.sugar||0,sodium:x.sodium||0,chol:x.chol||0}))) });Object.entries(old.water||{}).forEach(([k,count])=>{n.days[k]=n.days[k]||{meals:{},water:[],note:"",mealPhotos:{}};n.mealNames.forEach(m=>n.days[k].meals[m]=n.days[k].meals[m]||[]);if(Number(count)>0)n.days[k].water=[{ml:Number(count)*250,time:"importado"}]});n.weights=clone(old.weights||[]);n.savedMeals=clone(old.savedMeals||[]);return n}catch(e){return null}}
 function upgradeState(s){
@@ -1757,6 +1758,17 @@ function upgradeState(s){
   s.profile=s.profile||{};s.profile.nutrientTargets=s.profile.nutrientTargets||{};
   s.plans=s.plans||{};s.shoppingList=Array.isArray(s.shoppingList)?s.shoppingList:[];s.trash=Array.isArray(s.trash)?s.trash:[];s.calorieWeekOverrides=s.calorieWeekOverrides&&typeof s.calorieWeekOverrides==="object"?s.calorieWeekOverrides:{};s.calorieSwapReviews=s.calorieSwapReviews&&typeof s.calorieSwapReviews==="object"?s.calorieSwapReviews:{};
 if(s.profile){
+  if(s.profile.caloriePlanMode==="weekday"&&!s.profile.weekdayPlanStartDate){
+    const now=new Date();
+    now.setHours(12,0,0,0);
+    const diff=(now.getDay()+6)%7;
+    now.setDate(now.getDate()-diff);
+    s.profile.weekdayPlanStartDate=localDateKey(now);
+  }
+  if(s.profile.caloriePlanMode==="weekday"&&!(Number(s.profile.historicalFixedCalorieGoal)>0)){
+    const legacyFixed=Number(s.profile.calorieGoal)||0;
+    if(legacyFixed>0)s.profile.historicalFixedCalorieGoal=legacyFixed;
+  }
   if(!(Number(s.profile.maintenanceReferenceKcal)>0)&&Number(s.profile.age)>0&&Number(s.profile.age)<20){
     const legacyReference=Number(s.profile.calorieGoal)||0;
     if(legacyReference>0)s.profile.maintenanceReferenceKcal=legacyReference;
@@ -1956,21 +1968,46 @@ function dailyPlanWeeklyDeficit(profile=state.profile){
   return Math.round(total);
 }
 
+function weekdayPlanStartDate(profile=state.profile){
+  const raw=profile?.weekdayPlanStartDate;
+  if(!raw)return null;
+  const d=dateObj(raw);
+  d.setHours(12,0,0,0);
+  return d;
+}
+
+function dateUsesWeekdayPlan(profile,date){
+  if(profile?.objective!=="lose"||profile?.caloriePlanMode!=="weekday"||profile?.calorieScheduleEnabled!==true)return false;
+  const start=weekdayPlanStartDate(profile);
+  if(!start)return false;
+  const d=date instanceof Date?new Date(date):dateObj(date);
+  d.setHours(12,0,0,0);
+  return d>=start;
+}
+
+function historicalFixedGoal(profile=state.profile,date=selectedDate){
+  const frozen=Number(profile?.historicalFixedCalorieGoal)||0;
+  if(frozen>0)return Math.round(frozen);
+  return Math.round(Number(profile?.calorieGoal)||2000);
+}
+
 function profileGoal(date=selectedDate){
   const p=state.profile;
+  const d=date instanceof Date?date:dateObj(date);
 
-  if(
-    p.objective==="lose" &&
-    p.caloriePlanMode==="weekday" &&
-    p.calorieScheduleEnabled===true
-  ){
-    const varied=dailyPlanGoal(p,date);
+  if(dateUsesWeekdayPlan(p,d)){
+    const varied=dailyPlanGoal(p,d);
     if(varied!=null)return varied;
+  }
+
+  if(p.objective==="lose"&&p.caloriePlanMode==="weekday"&&p.weekdayPlanStartDate){
+    const start=weekdayPlanStartDate(p);
+    const check=new Date(d);check.setHours(12,0,0,0);
+    if(start&&check<start)return historicalFixedGoal(p,d);
   }
 
   const info=calorieScheduleInfo(p);
   if(info.enabled){
-    const d=date instanceof Date?date:dateObj(date);
     if(d.getDay()===info.maintenanceDay)return Math.round(info.maintenance);
     return Math.round(info.deficitDay);
   }
@@ -2065,7 +2102,7 @@ window.moveMealName=(i,dir)=>{const j=i+dir;if(j<0||j>=state.mealNames.length)re
 window.deleteMealName=i=>{const m=state.mealNames[i];if(!confirm(`Excluir a refeição “${m}”? Os alimentos nela também serão removidos dos dias salvos.`))return;state.mealNames.splice(i,1);Object.values(state.days).forEach(d=>delete d.meals?.[m]);delete state.profile.mealTargets[m];save();renderAll()};
 function renderReminders(){document.getElementById("remindersList").innerHTML=state.reminders.length?state.reminders.map((r,i)=>`<div class="stat-line"><span><b>${esc(r.type)}</b><br><small>${esc(r.message||"")}</small></span><span>${r.time} <button class="icon-btn del" onclick="deleteReminder(${i})">×</button></span></div>`).join(""):`<div class="empty">Nenhum lembrete.</div>`}
 window.deleteReminder=i=>{state.reminders.splice(i,1);save();renderReminders()};
-function renderAll(){ensureDay();renderToday();renderWater();renderHistory();renderSecondary();renderProfile();fillMealSelects();applyAppearance();if(typeof updateSwapGoalMenuVisibility==="function")updateSwapGoalMenuVisibility();if(typeof checkFlexibleGoalSuggestion==="function")setTimeout(checkFlexibleGoalSuggestion,120)}
+function renderAll(){ensureDay();renderToday();renderWater();renderHistory();renderSecondary();renderProfile();fillMealSelects();applyAppearance();if(typeof updateSwapGoalMenuVisibility==="function")updateSwapGoalMenuVisibility();if(typeof updateWeekdayStartNote==="function")updateWeekdayStartNote();if(typeof checkFlexibleGoalSuggestion==="function")setTimeout(checkFlexibleGoalSuggestion,120)}
 function fillMealSelects(){["foodMeal","assistantMeal","manualMeal"].forEach(id=>{const el=document.getElementById(id);if(!el)return;const cur=el.value;el.innerHTML='<option value="">Selecione a refeição</option>'+state.mealNames.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join("");el.value=state.mealNames.includes(cur)?cur:""})}
 function switchPage(id){document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id===id));document.querySelectorAll(".nav").forEach(n=>n.classList.toggle("active",n.dataset.page===id));if(id==="historyPage")renderHistory();if(id==="recipesPage")renderSecondary();if(id==="profilePage")renderProfile();if(id==="waterPage")renderWater()}
 document.querySelectorAll(".nav").forEach(n=>n.onclick=()=>switchPage(n.dataset.page));
@@ -4239,6 +4276,7 @@ editProfileBtn.onclick=()=>{
   renderDailyPlanRows("profile",normalizedDailyCaloriePlan(p));
   setPlanMode("profile",mode);
   updateProfileDeficit();
+  updateWeekdayStartNote();
   openModal("profileModal");
 };
 
@@ -4261,6 +4299,15 @@ saveProfile.onclick=()=>{
   const maintenanceDay=Math.max(0,Math.min(6,Number(profileMaintenanceDay.value)||0));
   const dailyPlan=readDailyPlanRows("profile");
   const chosenMode=profilePlanMode==="weekday"?"weekday":"fixed";
+
+  let weekdayStart=state.profile.weekdayPlanStartDate||null;
+  let historicalFixedGoal=Number(state.profile.historicalFixedCalorieGoal)||0;
+  if(chosenMode==="weekday"){
+    if(!weekdayStart)weekdayStart=localDateKey(weekStartDate(new Date()));
+    if(!(historicalFixedGoal>0)){
+      historicalFixedGoal=Number(state.profile.calorieGoal)||Number(calorieGoalInput.value)||0;
+    }
+  }
 
   const tempProfile={
     sex:newSex,age:newAge,weight:newWeight,height:newHeight,activity:newActivity,
@@ -4313,6 +4360,8 @@ saveProfile.onclick=()=>{
     caloriePlanMode:chosenMode,
     dailyCaloriePlan:dailyPlan,
     maintenanceReferenceKcal:maintenanceReference||null,
+    weekdayPlanStartDate:chosenMode==="weekday"?weekdayStart:state.profile.weekdayPlanStartDate,
+    historicalFixedCalorieGoal:historicalFixedGoal||state.profile.historicalFixedCalorieGoal||null,
     calorieScheduleEnabled:scheduleEnabled,
     waterGoalMode:waterAuto?"auto":"manual",
     macroTargets:{p:Number(targetP.value)||0,c:Number(targetC.value)||0,f:Number(targetF.value)||0}
@@ -4933,14 +4982,18 @@ function weeklyEnergyBalance(){
 
     days.push({
       d,k,logged,future,kcal,balance,
-      maintenanceDay:(state.profile.caloriePlanMode==="weekday"&&state.profile.calorieScheduleEnabled===true)
+      maintenanceDay:(state.profile.caloriePlanMode==="weekday"
+          &&state.profile.calorieScheduleEnabled===true
+          &&dateUsesWeekdayPlan(state.profile,d))
         ?effectiveDailyPlanItem(state.profile,d)?.mode==="maintenance"
         :schedule.enabled&&d.getDay()===schedule.maintenanceDay
     });
   }
 
   const net=spent-consumed;
-  const target=(state.profile.caloriePlanMode==="weekday"&&state.profile.calorieScheduleEnabled===true)
+  const target=(state.profile.caloriePlanMode==="weekday"
+      &&state.profile.calorieScheduleEnabled===true
+      &&dateUsesWeekdayPlan(state.profile,start))
     ?Math.max(0,dailyPlanWeeklyDeficit(state.profile))
     :(schedule.enabled?Number(schedule.effective)||0:0);
 
@@ -5210,6 +5263,14 @@ function updateDailyPlanPreview(prefix){
     ${weeklyDeficit>0?` ≈ ${kg.toFixed(2).replace(".",",")} kg pela regra prática de 7.700 kcal/kg`:""}
   `;
 }
+function updateWeekdayStartNote(){
+  const el=document.getElementById("profileWeekdayStartNote");
+  if(!el)return;
+  const raw=state.profile.weekdayPlanStartDate;
+  const start=raw?dateObj(raw):weekStartDate(new Date());
+  el.innerHTML=`As metas variáveis valem a partir de <b>${start.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"})}</b>. Datas anteriores continuam usando a meta fixa antiga.`;
+}
+
 function setPlanMode(prefix,mode){
   const fixedBtn=document.getElementById(prefix+"PlanFixedBtn");
   const weekdayBtn=document.getElementById(prefix+"PlanWeekdayBtn");
@@ -5256,7 +5317,8 @@ function variedGoalModeActive(){
   return state.profile?.objective==="lose"
     && state.profile?.caloriePlanMode==="weekday"
     && state.profile?.calorieScheduleEnabled===true
-    && estimatePlanMaintenance(state.profile)>0;
+    && estimatePlanMaintenance(state.profile)>0
+    && dateUsesWeekdayPlan(state.profile,new Date());
 }
 
 function updateSwapGoalMenuVisibility(){
