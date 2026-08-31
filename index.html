@@ -99,6 +99,16 @@ html.central-guard-lock body{
   color:#a0a6b4;
   font-size:9px;
 }
+
+.weekly-plan-weight{
+  margin-top:-2px;
+  font-size:19px;
+  font-weight:850;
+  color:var(--primary);
+  letter-spacing:-.2px;
+}
+body.dark .weekly-plan-weight{color:#9aa8ff}
+
 </style>
 
 <script>
@@ -1406,6 +1416,7 @@ body.dark .daily-cal-row{
     <div class="water-auto-box" id="profileWeekTotalsBox" style="margin-top:10px">
       <b>📊 Déficit planejado da semana</b>
       <div class="water-auto-preview" id="profileWeekTotalPreview">— kcal/semana</div>
+      <div class="weekly-plan-weight" id="profileWeekWeightPreview">≈ — kg/semana</div>
       <div class="note" id="profileWeekTotalNote">Soma das metas de déficit configuradas para a semana.</div>
     </div>
 
@@ -5478,6 +5489,134 @@ function scheduleNextFlexibleGoalCheck(){
 }
 
 scheduleNextFlexibleGoalCheck();
+
+
+// ============================================================
+// RESUMO SEMANAL DO PLANEJADOR — CORREÇÃO FINAL
+// Calcula diretamente a partir dos campos visíveis do planejador.
+// ============================================================
+function renderProfileWeeklyPlanSummaryFinal(){
+  const totalEl=document.getElementById("profileWeekTotalPreview");
+  const weightEl=document.getElementById("profileWeekWeightPreview");
+  const noteEl=document.getElementById("profileWeekTotalNote");
+  if(!totalEl||!noteEl)return;
+
+  const mode=(typeof profilePlanMode!=="undefined"&&profilePlanMode==="weekday")
+    ?"weekday"
+    :"fixed";
+
+  let weeklyBalance=0;
+  let maintenanceDays=0;
+  let intakeDaysWithoutReference=0;
+
+  if(mode==="fixed"){
+    // The fixed field already represents the TOTAL weekly deficit.
+    weeklyBalance=Math.max(
+      0,
+      Math.min(6000,Number(document.getElementById("profileWeeklyDeficit")?.value)||0)
+    );
+    maintenanceDays=1;
+  }else{
+    // Variable mode: sum exactly what the user entered as deficit.
+    const rows=document.querySelectorAll("#profileDailyPlanRows [data-plan-row]");
+
+    // Maintenance is only needed to convert days entered as "Consumo".
+    const profileLike={
+      sex:document.getElementById("profileSex")?.value||"male",
+      age:Number(document.getElementById("profileAge")?.value)||0,
+      weight:Number(document.getElementById("profileWeight")?.value)||0,
+      height:Number(document.getElementById("profileHeight")?.value)||0,
+      activity:Number(document.getElementById("profileActivity")?.value)||1.2,
+      objective:document.getElementById("profileObjective")?.value||"lose"
+    };
+    const maintenance=Number(
+      typeof estimateAdultMaintenance==="function"
+        ? estimateAdultMaintenance(profileLike)
+        : 0
+    )||0;
+
+    rows.forEach(row=>{
+      const modeEl=row.querySelector("[data-plan-mode]");
+      const valueEl=row.querySelector("[data-plan-value]");
+      const rowMode=modeEl?.value||"maintenance";
+      const value=Math.max(0,Number(valueEl?.value)||0);
+
+      if(rowMode==="deficit"){
+        weeklyBalance+=value;
+      }else if(rowMode==="maintenance"){
+        maintenanceDays++;
+      }else if(rowMode==="intake"){
+        if(maintenance>0){
+          // Positive = deficit, negative = surplus.
+          weeklyBalance+=maintenance-value;
+        }else{
+          intakeDaysWithoutReference++;
+        }
+      }
+    });
+  }
+
+  const isDeficit=weeklyBalance>=0;
+  const absolute=Math.abs(weeklyBalance);
+  const approxKg=absolute/7700;
+
+  totalEl.textContent=`${fmt(Math.round(absolute))} kcal/semana`;
+  if(weightEl){
+    weightEl.textContent=`≈ ${approxKg.toFixed(2).replace(".",",")} kg/semana`;
+  }
+
+  const parts=[];
+  parts.push(
+    `<b>${isDeficit?"Déficit":"Superávit"} planejado:</b> ${fmt(Math.round(absolute))} kcal/semana`
+  );
+  parts.push(`<b>Equivalência aproximada:</b> ${approxKg.toFixed(2).replace(".",",")} kg/semana`);
+  parts.push(`<b>Dias em manutenção:</b> ${maintenanceDays}`);
+
+  if(intakeDaysWithoutReference){
+    parts.push(
+      `${intakeDaysWithoutReference} dia(s) em modo <b>Consumo</b> não foram convertidos em déficit porque não há gasto de manutenção calculável`
+    );
+  }
+
+  noteEl.innerHTML=parts.join(" • ");
+}
+
+function scheduleProfileWeeklyPlanSummaryFinal(){
+  // Run after older preview handlers too, so this renderer wins.
+  requestAnimationFrame(()=>{
+    setTimeout(renderProfileWeeklyPlanSummaryFinal,0);
+  });
+}
+
+// Capture phase: updates even when older handlers are attached later.
+document.addEventListener("input",e=>{
+  if(e.target.closest("#profileModal"))scheduleProfileWeeklyPlanSummaryFinal();
+},true);
+
+document.addEventListener("change",e=>{
+  if(e.target.closest("#profileModal"))scheduleProfileWeeklyPlanSummaryFinal();
+},true);
+
+// Buttons for fixed/variable mode.
+document.getElementById("profilePlanFixedBtn")?.addEventListener(
+  "click",scheduleProfileWeeklyPlanSummaryFinal,true
+);
+document.getElementById("profilePlanWeekdayBtn")?.addEventListener(
+  "click",scheduleProfileWeeklyPlanSummaryFinal,true
+);
+
+// Re-render when the modal is opened or app redraws.
+const __weeklySummaryOldOpenModal=openModal;
+openModal=function(id){
+  const r=__weeklySummaryOldOpenModal.apply(this,arguments);
+  if(id==="profileModal"){
+    setTimeout(renderProfileWeeklyPlanSummaryFinal,30);
+    setTimeout(renderProfileWeeklyPlanSummaryFinal,180);
+  }
+  return r;
+};
+
+setTimeout(renderProfileWeeklyPlanSummaryFinal,50);
 
 // PWA
 if("serviceWorker" in navigator && location.protocol.startsWith("http")){
