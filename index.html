@@ -1403,6 +1403,12 @@ body.dark .daily-cal-row{
     <b>📉 Planejamento de calorias</b>
     <p class="note" style="margin-top:6px">Escolha se quer manter o déficit fixo atual ou definir uma meta diferente para cada dia da semana.</p>
 
+    <div class="water-auto-box" id="profileWeekTotalsBox" style="margin-top:10px">
+      <b>📊 Total planejado da semana</b>
+      <div class="water-auto-preview" id="profileWeekTotalPreview">— kcal/semana</div>
+      <div class="note" id="profileWeekTotalNote">O app vai somar aqui o total das metas da semana e o déficit planejado.</div>
+    </div>
+
     <div class="water-mode-row calorie-plan-mode-row">
       <button type="button" class="water-mode-btn active" id="profilePlanFixedBtn">Déficit fixo</button>
       <button type="button" class="water-mode-btn" id="profilePlanWeekdayBtn">Variado por dia</button>
@@ -1450,7 +1456,7 @@ body.dark .daily-cal-row{
   </div>
 
   <button class="add-btn" id="calculateCaloriesBtn">🧮 Calcular sugestão de calorias</button><div id="calorieCalcResult" class="note"></div>
-  <label>Meta de calorias (kcal/dia)</label><input id="calorieGoalInput" type="number" min="500" max="10000">
+  <div class="hidden" aria-hidden="true"><label>Meta de calorias (kcal/dia)</label><input id="calorieGoalInput" type="number" min="500" max="10000"></div><div class="note">A meta diária de kcal agora é definida pelo <b>Planejamento de calorias</b> acima.</div>
   <label>Proteína (g/dia)</label><input id="targetP" type="number" min="0">
   <label>Carboidratos (g/dia)</label><input id="targetC" type="number" min="0">
   <label>Gorduras (g/dia)</label><input id="targetF" type="number" min="0">
@@ -4422,6 +4428,147 @@ async function cleanupUnusedMediaV15(){
     for(const item of all)if(item?.id&&!used.has(item.id))await mediaDelete(item.id);
   }catch(e){}
 }
+
+// ========================
+// AJUSTES DO PLANEJADOR
+// - mostra total semanal
+// - usa o planejador como meta principal
+// ========================
+function __mcPlanMode(prefix){
+  return prefix==="ob" ? obPlanMode : profilePlanMode;
+}
+function __mcCalorieGoalInput(prefix){
+  return prefix==="ob" ? obCalories : calorieGoalInput;
+}
+function __mcWeekSummary(prefix){
+  const previewEl=document.getElementById(prefix+"WeekTotalPreview");
+  const noteEl=document.getElementById(prefix+"WeekTotalNote");
+  if(!previewEl||!noteEl)return;
+
+  let p=null;
+  try{ p=tempProfileForPlan(prefix); }catch(e){}
+  if(!p){
+    previewEl.textContent="— kcal/semana";
+    noteEl.textContent="Preencha seu planejamento para ver o total da semana.";
+    return;
+  }
+
+  const maintenance=Number(estimateAdultMaintenance(p)||0);
+  const dayPlan=(p.dailyCaloriePlan&&typeof p.dailyCaloriePlan==="object") ? p.dailyCaloriePlan : {};
+  let totalGoal=0;
+  let deficitTotal=0;
+  let surplusTotal=0;
+  let maintenanceCount=0;
+
+  CAL_PLAN_DAYS.forEach(({day})=>{
+    let item=null;
+
+    if(__mcPlanMode(prefix)==="weekday"){
+      item=dayPlan[day]||{mode:"maintenance",value:0};
+    }else{
+      const info=calorieScheduleInfo(p);
+      if(info&&p.objective==="lose"&&Number(p.age)>=20&&maintenance>0&&info.enabled){
+        item = day===info.maintenanceDay
+          ? {mode:"maintenance",value:0}
+          : {mode:"deficit",value:Math.max(0, Math.round(maintenance-(info.deficitDay||maintenance)))};
+      }else{
+        const fixedValue=Number(__mcCalorieGoalInput(prefix)?.value)||0;
+        item = fixedValue>0 ? {mode:"intake",value:fixedValue} : {mode:"maintenance",value:0};
+      }
+    }
+
+    let goal=maintenance;
+    if(item.mode==="maintenance"){
+      maintenanceCount++;
+      goal=maintenance;
+    }else if(item.mode==="intake"){
+      goal=Math.max(1200, Number(item.value)||0);
+    }else{
+      const deficit=Math.max(0, Math.min(1000, Number(item.value)||0));
+      goal=Math.max(1200, maintenance>0 ? maintenance-deficit : 0);
+    }
+
+    if(goal>0) totalGoal += goal;
+    if(maintenance>0 && goal>0){
+      if(goal<maintenance) deficitTotal += (maintenance-goal);
+      if(goal>maintenance) surplusTotal += (goal-maintenance);
+    }
+  });
+
+  if(totalGoal>0){
+    previewEl.textContent=`${fmt(Math.round(totalGoal))} kcal/semana`;
+  }else{
+    previewEl.textContent="Preencha peso, altura e atividade";
+  }
+
+  const parts=[];
+  if(maintenance>0) parts.push(`Manutenção estimada: <b>${fmt(Math.round(maintenance))} kcal/dia</b>`);
+  if(deficitTotal>0) parts.push(`Déficit planejado: <b>${fmt(Math.round(deficitTotal))} kcal/semana</b> (≈ <b>${(deficitTotal/7700).toFixed(2).replace(".",",")} kg/semana</b>)`);
+  if(surplusTotal>0) parts.push(`Consumo acima da manutenção: <b>${fmt(Math.round(surplusTotal))} kcal/semana</b>`);
+  parts.push(`Dias em manutenção: <b>${maintenanceCount}</b>`);
+  noteEl.innerHTML=parts.join(" • ");
+
+  const hiddenGoal=__mcCalorieGoalInput(prefix);
+  if(hiddenGoal){
+    let todayGoal=0;
+    try{
+      if(p.objective==="lose" && __mcPlanMode(prefix)==="weekday" && typeof dailyPlanGoal==="function"){
+        todayGoal = Number(dailyPlanGoal(p,new Date())||0);
+      }else if(maintenance>0){
+        todayGoal = Math.round(maintenance);
+      }
+    }catch(e){}
+    if(todayGoal>0) hiddenGoal.value=Math.round(todayGoal);
+  }
+}
+
+function __mcRefreshPlannerExtras(prefix){
+  try{ __mcWeekSummary(prefix); }catch(e){}
+}
+
+const __oldUpdateProfileDeficit=updateProfileDeficit;
+updateProfileDeficit=function(){
+  const r=__oldUpdateProfileDeficit.apply(this,arguments);
+  __mcRefreshPlannerExtras("profile");
+  return r;
+};
+
+const __oldUpdateOnboardingDeficit=updateOnboardingDeficit;
+updateOnboardingDeficit=function(){
+  const r=__oldUpdateOnboardingDeficit.apply(this,arguments);
+  __mcRefreshPlannerExtras("ob");
+  return r;
+};
+
+const __oldUpdateDailyPlanPreview=updateDailyPlanPreview;
+updateDailyPlanPreview=function(prefix){
+  const r=__oldUpdateDailyPlanPreview.apply(this,arguments);
+  __mcRefreshPlannerExtras(prefix);
+  return r;
+};
+
+const __oldSetPlanMode=setPlanMode;
+setPlanMode=function(prefix,mode){
+  const r=__oldSetPlanMode.apply(this,arguments);
+  setTimeout(()=>__mcRefreshPlannerExtras(prefix),0);
+  return r;
+};
+
+document.addEventListener("input",e=>{
+  if(e.target.closest("#profileModal"))setTimeout(()=>__mcRefreshPlannerExtras("profile"),0);
+  if(e.target.closest("#onboardingModal"))setTimeout(()=>__mcRefreshPlannerExtras("ob"),0);
+});
+document.addEventListener("change",e=>{
+  if(e.target.closest("#profileModal"))setTimeout(()=>__mcRefreshPlannerExtras("profile"),0);
+  if(e.target.closest("#onboardingModal"))setTimeout(()=>__mcRefreshPlannerExtras("ob"),0);
+});
+
+setTimeout(()=>{
+  try{__mcRefreshPlannerExtras("ob")}catch(e){}
+  try{__mcRefreshPlannerExtras("profile")}catch(e){}
+},0);
+
+
 cleanupUnusedMediaV15();
 
 
