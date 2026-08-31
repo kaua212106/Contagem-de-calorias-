@@ -1404,9 +1404,9 @@ body.dark .daily-cal-row{
     <p class="note" style="margin-top:6px">Escolha se quer manter o déficit fixo atual ou definir uma meta diferente para cada dia da semana.</p>
 
     <div class="water-auto-box" id="profileWeekTotalsBox" style="margin-top:10px">
-      <b>📊 Total planejado da semana</b>
+      <b>📊 Déficit planejado da semana</b>
       <div class="water-auto-preview" id="profileWeekTotalPreview">— kcal/semana</div>
-      <div class="note" id="profileWeekTotalNote">O app vai somar aqui o total das metas da semana e o déficit planejado.</div>
+      <div class="note" id="profileWeekTotalNote">Soma das metas de déficit configuradas para a semana.</div>
     </div>
 
     <div class="water-mode-row calorie-plan-mode-row">
@@ -4445,83 +4445,73 @@ function __mcWeekSummary(prefix){
   const noteEl=document.getElementById(prefix+"WeekTotalNote");
   if(!previewEl||!noteEl)return;
 
-  let p=null;
-  try{ p=tempProfileForPlan(prefix); }catch(e){}
-  if(!p){
-    previewEl.textContent="— kcal/semana";
-    noteEl.textContent="Preencha seu planejamento para ver o total da semana.";
+  const mode=__mcPlanMode(prefix);
+  const isOb=prefix==="ob";
+  const maintenanceDay=Number(isOb?obMaintenanceDay.value:profileMaintenanceDay.value)||0;
+  const maintenanceCountModeFixed=1;
+
+  // MODO FIXO: o próprio campo já representa o total semanal desejado.
+  if(mode==="fixed"){
+    const weekly=Math.max(0,Math.min(6000,Number(isOb?obWeeklyDeficit.value:profileWeeklyDeficit.value)||0));
+    previewEl.textContent=`${fmt(Math.round(weekly))} kcal/semana`;
+    noteEl.innerHTML=`
+      <b>Déficit semanal configurado:</b> ${fmt(Math.round(weekly))} kcal
+      ${weekly>0?` • ≈ ${(weekly/7700).toFixed(2).replace(".",",")} kg pela regra prática de 7.700 kcal/kg`:""}
+      • <b>Dia de manutenção:</b> ${WEEKDAY_NAMES[maintenanceDay]}
+    `;
     return;
   }
 
-  const maintenance=Number(estimateAdultMaintenance(p)||0);
-  const dayPlan=(p.dailyCaloriePlan&&typeof p.dailyCaloriePlan==="object") ? p.dailyCaloriePlan : {};
-  let totalGoal=0;
-  let deficitTotal=0;
-  let surplusTotal=0;
-  let maintenanceCount=0;
+  // MODO VARIADO: soma os déficits digitados em cada dia.
+  const plan=readDailyPlanRows(prefix);
+  let explicitDeficit=0;
+  let maintenanceDays=0;
+  let intakeDays=0;
+  let intakeNet=0;
+
+  let p=null;
+  try{p=tempProfileForPlan(prefix)}catch(e){}
+  const maintenance=p?Number(estimateAdultMaintenance(p)||0):0;
 
   CAL_PLAN_DAYS.forEach(({day})=>{
-    let item=null;
+    const item=plan[day]||{mode:"maintenance",value:0};
 
-    if(__mcPlanMode(prefix)==="weekday"){
-      item=dayPlan[day]||{mode:"maintenance",value:0};
-    }else{
-      const info=calorieScheduleInfo(p);
-      if(info&&p.objective==="lose"&&Number(p.age)>=20&&maintenance>0&&info.enabled){
-        item = day===info.maintenanceDay
-          ? {mode:"maintenance",value:0}
-          : {mode:"deficit",value:Math.max(0, Math.round(maintenance-(info.deficitDay||maintenance)))};
-      }else{
-        const fixedValue=Number(__mcCalorieGoalInput(prefix)?.value)||0;
-        item = fixedValue>0 ? {mode:"intake",value:fixedValue} : {mode:"maintenance",value:0};
-      }
-    }
-
-    let goal=maintenance;
-    if(item.mode==="maintenance"){
-      maintenanceCount++;
-      goal=maintenance;
+    if(item.mode==="deficit"){
+      explicitDeficit+=Math.max(0,Math.min(1000,Number(item.value)||0));
+    }else if(item.mode==="maintenance"){
+      maintenanceDays++;
     }else if(item.mode==="intake"){
-      goal=Math.max(1200, Number(item.value)||0);
-    }else{
-      const deficit=Math.max(0, Math.min(1000, Number(item.value)||0));
-      goal=Math.max(1200, maintenance>0 ? maintenance-deficit : 0);
-    }
-
-    if(goal>0) totalGoal += goal;
-    if(maintenance>0 && goal>0){
-      if(goal<maintenance) deficitTotal += (maintenance-goal);
-      if(goal>maintenance) surplusTotal += (goal-maintenance);
+      intakeDays++;
+      // Só converte "Consumo" em déficit/superávit se houver gasto
+      // de manutenção calculável. Caso contrário, não inventa valor.
+      if(maintenance>0){
+        intakeNet+=maintenance-Math.max(0,Number(item.value)||0);
+      }
     }
   });
 
-  if(totalGoal>0){
-    previewEl.textContent=`${fmt(Math.round(totalGoal))} kcal/semana`;
-  }else{
-    previewEl.textContent="Preencha peso, altura e atividade";
+  let total=explicitDeficit;
+  if(maintenance>0)total+=intakeNet;
+
+  const deficit=total>=0;
+  previewEl.textContent=`${fmt(Math.round(Math.abs(total)))} kcal/semana`;
+
+  const parts=[
+    `<b>${deficit?"Déficit":"Superávit"} semanal planejado:</b> ${fmt(Math.round(Math.abs(total)))} kcal`
+  ];
+
+  if(total>0){
+    parts.push(`≈ ${(total/7700).toFixed(2).replace(".",",")} kg pela regra prática de 7.700 kcal/kg`);
   }
 
-  const parts=[];
-  if(maintenance>0) parts.push(`Manutenção estimada: <b>${fmt(Math.round(maintenance))} kcal/dia</b>`);
-  if(deficitTotal>0) parts.push(`Déficit planejado: <b>${fmt(Math.round(deficitTotal))} kcal/semana</b> (≈ <b>${(deficitTotal/7700).toFixed(2).replace(".",",")} kg/semana</b>)`);
-  if(surplusTotal>0) parts.push(`Consumo acima da manutenção: <b>${fmt(Math.round(surplusTotal))} kcal/semana</b>`);
-  parts.push(`Dias em manutenção: <b>${maintenanceCount}</b>`);
+  parts.push(`<b>Dias em manutenção:</b> ${maintenanceDays}`);
+
+  if(intakeDays>0&&!maintenance){
+    parts.push(`${intakeDays} dia(s) em modo <b>Consumo</b> não entram no saldo porque o app não tem um gasto de manutenção calculável para convertê-los`);
+  }
+
   noteEl.innerHTML=parts.join(" • ");
-
-  const hiddenGoal=__mcCalorieGoalInput(prefix);
-  if(hiddenGoal){
-    let todayGoal=0;
-    try{
-      if(p.objective==="lose" && __mcPlanMode(prefix)==="weekday" && typeof dailyPlanGoal==="function"){
-        todayGoal = Number(dailyPlanGoal(p,new Date())||0);
-      }else if(maintenance>0){
-        todayGoal = Math.round(maintenance);
-      }
-    }catch(e){}
-    if(todayGoal>0) hiddenGoal.value=Math.round(todayGoal);
-  }
 }
-
 function __mcRefreshPlannerExtras(prefix){
   try{ __mcWeekSummary(prefix); }catch(e){}
 }
