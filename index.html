@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#667eea">
-   <style>
+
+<!-- =========================================================
+     VERIFICAÇÃO DE ACESSO — CENTRAL DE APPS
+     ========================================================= -->
+<style>
 html.central-guard-lock body{
   visibility:hidden!important;
 }
@@ -107,7 +106,14 @@ document.documentElement.classList.add("central-guard-lock");
 </script>
 
 <script src="auth-guard-v3.js"></script>
-   
+<!-- FIM DA VERIFICAÇÃO DA CENTRAL -->
+
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#667eea">
 <link rel="manifest" href="manifest.json">
 <title>Minhas Calorias Completo</title>
 <style>
@@ -465,7 +471,7 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--primary)}
   height:50px;border-radius:13px;font-size:14px;margin-bottom:9px;
   padding:0 16px;text-align:left;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)
 }
-.menu-profile{background:#5b71d8}.menu-report{background:#4286c6}.menu-theme{background:#d99023}
+.menu-profile{background:#5b71d8}.menu-swap{background:#6f5bd3}.menu-report{background:#4286c6}.menu-theme{background:#d99023}
 .menu-color{background:#7660d7}.menu-water{background:#27815c}.menu-export{background:#5b71d8}
 .menu-import{background:#27815c}.menu-reminders{background:#ce4c8d}.menu-close{background:#d94c4c;text-align:center}
 .menu-item:hover{filter:brightness(1.035);transform:translateY(-1px)}
@@ -1221,6 +1227,7 @@ body.dark .daily-cal-row{
 <div class="menu-modal" id="menuModal"><div class="menu-box">
   <h2>Menu</h2>
   <button class="menu-item menu-profile" id="menuProfile">🎯 Perfil e metas</button>
+  <button class="menu-item menu-swap hidden" id="menuSwapGoal">🔄 Trocar meta</button>
   <button class="menu-item menu-report" id="menuGlobalSearch">🔎 Pesquisa global</button>
   <button class="menu-item menu-theme" id="menuTrash">🗑️ Lixeira</button>
   <button class="menu-item menu-report" id="menuPlanner">🗓️ Planejamento semanal</button>
@@ -1232,6 +1239,35 @@ body.dark .daily-cal-row{
   <button class="menu-item menu-export" id="menuExport">📥 Exportar backup</button>
   <button class="menu-item menu-import" id="menuImport">📤 Importar backup</button>
   <button class="menu-item menu-close" id="menuClose">Fechar</button>
+</div></div>
+
+<!-- TROCAR META DA SEMANA -->
+<div class="modal" id="swapGoalModal"><div class="modal-box">
+  <div class="modal-title"><h2>🔄 Trocar meta</h2><button class="modal-close" data-close="swapGoalModal">×</button></div>
+  <p class="note">A troca vale <b>somente para esta semana</b>. Seu planejamento padrão das próximas semanas não será alterado.</p>
+
+  <label>Substituir meta de</label>
+  <select id="swapGoalFrom"></select>
+
+  <label>pela meta de</label>
+  <select id="swapGoalTo"></select>
+
+  <div class="insight-note" id="swapGoalPreview" style="margin-top:10px"></div>
+
+  <div class="actions">
+    <button class="btn-neutral" data-close="swapGoalModal">Cancelar</button>
+    <button class="btn-primary" id="confirmManualGoalSwap">Confirmar troca</button>
+  </div>
+</div></div>
+
+<!-- SUGESTÃO DE META FLEXÍVEL -->
+<div class="modal" id="flexGoalSuggestionModal"><div class="modal-box">
+  <div class="modal-title"><h2>🔄 Ajustar meta da semana?</h2><button class="modal-close" id="dismissFlexGoalX">×</button></div>
+  <div id="flexGoalSuggestionText"></div>
+  <div class="actions">
+    <button class="btn-neutral" id="cancelFlexGoalSwap">Manter como está</button>
+    <button class="btn-primary" id="confirmFlexGoalSwap">Trocar metas</button>
+  </div>
 </div></div>
 
 <!-- ADICIONAR ALIMENTO -->
@@ -1682,7 +1718,7 @@ const BASE_FOODS=[
  {n:"Brócolis cozido",k:25,p:2.1,c:4.4,f:.4,fiber:3.3,sugar:1.4,sodium:33,chol:0,servingG:100,s:"Base brasileira"}
 ];
 const DEFAULT_MEALS=["Café da manhã","Almoço","Lanche","Jantar","Ceia"];
-const DEFAULT_STATE={version:15,profile:{sex:"male",age:null,weight:null,height:null,activity:1.2,objective:"maintain",calorieGoal:2000,targetWeight:null,weeklyDeficitKcal:0,maintenanceDay:0,calorieScheduleEnabled:false,caloriePlanMode:"fixed",dailyCaloriePlan:null,waterGoalMl:2000,waterGoalMode:"auto",waterMlPerKg:35,macroTargets:{p:0,c:0,f:0},mealTargets:{},nutrientTargets:{}},settings:{dark:false,bg:"#667eea",tracked:["fiber","sugar","sodium","chol"],homeCards:{calories:true,progress:true,smart:true,quick:true,suggestions:true,streak:true,meals:true,notes:true},onboarded:false,fontScale:"normal",reduceMotion:false},days:{},plans:{},shoppingList:[],trash:[],weights:[],recipes:[],customFoods:[],favorites:[],recentFoods:[],savedMeals:[],mealNames:[...DEFAULT_MEALS],reminders:[],waterContainers:[{id:"cup250",name:"Copo",ml:250},{id:"bottle500",name:"Garrafa",ml:500}],offCache:{},onlineProductCatalog:[],autoBackups:[]};
+const DEFAULT_STATE={version:15,profile:{sex:"male",age:null,weight:null,height:null,activity:1.2,objective:"maintain",calorieGoal:2000,targetWeight:null,weeklyDeficitKcal:0,maintenanceDay:0,calorieScheduleEnabled:false,caloriePlanMode:"fixed",dailyCaloriePlan:null,waterGoalMl:2000,waterGoalMode:"auto",waterMlPerKg:35,macroTargets:{p:0,c:0,f:0},mealTargets:{},nutrientTargets:{}},settings:{dark:false,bg:"#667eea",tracked:["fiber","sugar","sodium","chol"],homeCards:{calories:true,progress:true,smart:true,quick:true,suggestions:true,streak:true,meals:true,notes:true},onboarded:false,fontScale:"normal",reduceMotion:false},days:{},plans:{},shoppingList:[],trash:[],weights:[],recipes:[],customFoods:[],favorites:[],recentFoods:[],savedMeals:[],mealNames:[...DEFAULT_MEALS],reminders:[],waterContainers:[{id:"cup250",name:"Copo",ml:250},{id:"bottle500",name:"Garrafa",ml:500}],offCache:{},onlineProductCatalog:[],calorieWeekOverrides:{},calorieSwapReviews:{},autoBackups:[]};
 function deepMerge(base,src){if(Array.isArray(base))return Array.isArray(src)?src:base;if(typeof base!=="object"||base===null)return src??base;const out={...base};if(src&&typeof src==="object")Object.keys(src).forEach(k=>out[k]=k in base?deepMerge(base[k],src[k]):src[k]);return out}
 function migrateOldState(){if(localStorage.getItem("minhasCaloriasCompleto"))return null;try{const old=JSON.parse(localStorage.getItem("caloriasApp")||"null");if(!old)return null;const n=clone(DEFAULT_STATE);n.profile.calorieGoal=Number(old.goal)||2000;n.profile={...n.profile,...(old.profile||{}),calorieGoal:Number(old.goal)||2000,macroTargets:old.macroTargets||n.profile.macroTargets,waterGoalMl:(Number(old.waterGoalCups)||8)*250};n.settings.dark=!!old.dark;n.days={};Object.entries(old.days||{}).forEach(([k,d])=>{n.days[k]={meals:{},water:[],note:"",mealPhotos:{}};n.mealNames.forEach(m=>n.days[k].meals[m]=clone(d[m]||[]).map(x=>({...x,id:x.id||uid(),fiber:x.fiber||0,sugar:x.sugar||0,sodium:x.sodium||0,chol:x.chol||0}))) });Object.entries(old.water||{}).forEach(([k,count])=>{n.days[k]=n.days[k]||{meals:{},water:[],note:"",mealPhotos:{}};n.mealNames.forEach(m=>n.days[k].meals[m]=n.days[k].meals[m]||[]);if(Number(count)>0)n.days[k].water=[{ml:Number(count)*250,time:"importado"}]});n.weights=clone(old.weights||[]);n.savedMeals=clone(old.savedMeals||[]);return n}catch(e){return null}}
 function upgradeState(s){
@@ -1692,7 +1728,7 @@ function upgradeState(s){
   s.settings=s.settings||{};s.settings.homeCards=s.settings.homeCards||{};delete s.settings.homeCards.exercise;
   Object.values(s.days||{}).forEach(d=>{if(d&&"exercises" in d)delete d.exercises});
   s.profile=s.profile||{};s.profile.nutrientTargets=s.profile.nutrientTargets||{};
-  s.plans=s.plans||{};s.shoppingList=Array.isArray(s.shoppingList)?s.shoppingList:[];s.trash=Array.isArray(s.trash)?s.trash:[];
+  s.plans=s.plans||{};s.shoppingList=Array.isArray(s.shoppingList)?s.shoppingList:[];s.trash=Array.isArray(s.trash)?s.trash:[];s.calorieWeekOverrides=s.calorieWeekOverrides&&typeof s.calorieWeekOverrides==="object"?s.calorieWeekOverrides:{};s.calorieSwapReviews=s.calorieSwapReviews&&typeof s.calorieSwapReviews==="object"?s.calorieSwapReviews:{};
   s.waterContainers=Array.isArray(s.waterContainers)&&s.waterContainers.length?s.waterContainers:[{id:"cup250",name:"Copo",ml:250},{id:"bottle500",name:"Garrafa",ml:500}];
   if(oldVersion>0&&oldVersion<13)s.settings.onboarded=true;
   else if(s.settings.onboarded==null)s.settings.onboarded=!!localStorage.getItem("minhasCaloriasCompleto");
@@ -1790,11 +1826,37 @@ function normalizedDailyCaloriePlan(profile=state.profile){
   return out;
 }
 
+function weekStartDate(date=new Date()){
+  const d=date instanceof Date?new Date(date):dateObj(date);
+  d.setHours(12,0,0,0);
+  const diff=(d.getDay()+6)%7;
+  d.setDate(d.getDate()-diff);
+  return d;
+}
+
+function calorieWeekKey(date=new Date()){
+  return localDateKey(weekStartDate(date));
+}
+
+function effectiveDailyPlanItem(profile,date){
+  const d=date instanceof Date?date:dateObj(date);
+  const wk=calorieWeekKey(d);
+  const dk=localDateKey(d);
+  const override=state.calorieWeekOverrides?.[wk]?.[dk];
+
+  if(override&&["deficit","intake","maintenance"].includes(override.mode)){
+    return {mode:override.mode,value:Math.max(0,Number(override.value)||0),weeklyOverride:true};
+  }
+
+  const base=normalizedDailyCaloriePlan(profile)[d.getDay()];
+  return {...base,weeklyOverride:false};
+}
+
 function dailyPlanGoal(profile,date){
   const maintenance=estimateAdultMaintenance(profile);
   if(!(maintenance>0))return null;
   const d=date instanceof Date?date:dateObj(date);
-  const item=normalizedDailyCaloriePlan(profile)[d.getDay()];
+  const item=effectiveDailyPlanItem(profile,d);
   if(!item)return null;
 
   if(item.mode==="maintenance")return Math.round(maintenance);
@@ -1802,6 +1864,29 @@ function dailyPlanGoal(profile,date){
 
   const deficit=Math.max(0,Math.min(1000,item.value||0));
   return Math.round(Math.max(1200,maintenance-deficit));
+}
+
+function saveWeekPlanItem(date,item){
+  const d=date instanceof Date?date:dateObj(date);
+  const wk=calorieWeekKey(d),dk=localDateKey(d);
+  state.calorieWeekOverrides=state.calorieWeekOverrides||{};
+  state.calorieWeekOverrides[wk]=state.calorieWeekOverrides[wk]||{};
+  state.calorieWeekOverrides[wk][dk]={
+    mode:["deficit","intake","maintenance"].includes(item?.mode)?item.mode:"maintenance",
+    value:Math.max(0,Number(item?.value)||0)
+  };
+}
+
+function swapWeekPlanItems(dateA,dateB){
+  const a=dateA instanceof Date?new Date(dateA):dateObj(dateA);
+  const b=dateB instanceof Date?new Date(dateB):dateObj(dateB);
+  if(calorieWeekKey(a)!==calorieWeekKey(b))return false;
+
+  const itemA=effectiveDailyPlanItem(state.profile,a);
+  const itemB=effectiveDailyPlanItem(state.profile,b);
+  saveWeekPlanItem(a,itemB);
+  saveWeekPlanItem(b,itemA);
+  return true;
 }
 
 function dailyPlanWeeklyDeficit(profile=state.profile){
@@ -1857,7 +1942,10 @@ function applyAppearance(){document.body.classList.toggle("dark",!!state.setting
 function renderToday(){const d=ensureDay(),t=calcDayTotals(d),goal=profileGoal();document.getElementById("dateLabel").textContent=selectedDate.toLocaleDateString("pt-BR",{weekday:"long"});document.getElementById("dateLong").textContent=selectedDate.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"});document.getElementById("consumed").textContent=fmt(t.k);document.getElementById("remaining").textContent=fmt(Math.max(0,goal-t.k));document.getElementById("goal").textContent=fmt(goal);
 const __scheduleToday=calorieScheduleInfo();
 if(document.getElementById("goalLabel")){
-  document.getElementById("goalLabel").textContent=__scheduleToday.enabled&&selectedDate.getDay()===__scheduleToday.maintenanceDay?"Manutenção":"Meta";
+  const __variedToday=variedGoalModeActive()?effectiveDailyPlanItem(state.profile,selectedDate):null;
+  document.getElementById("goalLabel").textContent=__variedToday?.mode==="maintenance"
+    ?"Manutenção"
+    :(__scheduleToday.enabled&&state.profile.caloriePlanMode!=="weekday"&&selectedDate.getDay()===__scheduleToday.maintenanceDay?"Manutenção":"Meta");
 }const pct=goal?Math.min(100,Math.round(t.k/goal*100)):0;document.getElementById("percent").textContent=pct+"%";document.getElementById("progressBar").style.width=pct+"%";
  document.getElementById("macroGrid").innerHTML=[["p","Proteína"],["c","Carboidratos"],["f","Gorduras"]].map(([n,l])=>{const tar=macroTarget(n),p=tar?Math.min(100,t[n]/tar*100):0;return `<div class="macro"><b>${t[n].toFixed(1)}g${tar?` / ${fmt(tar)}g`:""}</b><span>${l}</span><div class="mini-progress"><div style="width:${p}%"></div></div></div>`}).join("");
  document.getElementById("nutrientGrid").innerHTML=(state.settings.tracked||[]).map(n=>`<div class="nutrient"><span>${(NUTRIENTS[n]?.label||n)}</span><b>${fmt(t[n],n==="sodium"||n==="chol"?0:1)} ${(NUTRIENTS[n]?.unit||"")}</b></div>`).join("");
@@ -1927,7 +2015,7 @@ window.moveMealName=(i,dir)=>{const j=i+dir;if(j<0||j>=state.mealNames.length)re
 window.deleteMealName=i=>{const m=state.mealNames[i];if(!confirm(`Excluir a refeição “${m}”? Os alimentos nela também serão removidos dos dias salvos.`))return;state.mealNames.splice(i,1);Object.values(state.days).forEach(d=>delete d.meals?.[m]);delete state.profile.mealTargets[m];save();renderAll()};
 function renderReminders(){document.getElementById("remindersList").innerHTML=state.reminders.length?state.reminders.map((r,i)=>`<div class="stat-line"><span><b>${esc(r.type)}</b><br><small>${esc(r.message||"")}</small></span><span>${r.time} <button class="icon-btn del" onclick="deleteReminder(${i})">×</button></span></div>`).join(""):`<div class="empty">Nenhum lembrete.</div>`}
 window.deleteReminder=i=>{state.reminders.splice(i,1);save();renderReminders()};
-function renderAll(){ensureDay();renderToday();renderWater();renderHistory();renderSecondary();renderProfile();fillMealSelects();applyAppearance()}
+function renderAll(){ensureDay();renderToday();renderWater();renderHistory();renderSecondary();renderProfile();fillMealSelects();applyAppearance();if(typeof updateSwapGoalMenuVisibility==="function")updateSwapGoalMenuVisibility();if(typeof checkFlexibleGoalSuggestion==="function")setTimeout(checkFlexibleGoalSuggestion,120)}
 function fillMealSelects(){["foodMeal","assistantMeal","manualMeal"].forEach(id=>{const el=document.getElementById(id);if(!el)return;const cur=el.value;el.innerHTML='<option value="">Selecione a refeição</option>'+state.mealNames.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join("");el.value=state.mealNames.includes(cur)?cur:""})}
 function switchPage(id){document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id===id));document.querySelectorAll(".nav").forEach(n=>n.classList.toggle("active",n.dataset.page===id));if(id==="historyPage")renderHistory();if(id==="recipesPage")renderSecondary();if(id==="profilePage")renderProfile();if(id==="waterPage")renderWater()}
 document.querySelectorAll(".nav").forEach(n=>n.onclick=()=>switchPage(n.dataset.page));
@@ -4656,7 +4744,7 @@ function weeklyEnergyBalance(){
     days.push({
       d,k,logged,future,kcal,balance,
       maintenanceDay:(state.profile.caloriePlanMode==="weekday"&&state.profile.calorieScheduleEnabled===true)
-        ?normalizedDailyCaloriePlan(state.profile)[d.getDay()]?.mode==="maintenance"
+        ?effectiveDailyPlanItem(state.profile,d)?.mode==="maintenance"
         :schedule.enabled&&d.getDay()===schedule.maintenanceDay
     });
   }
@@ -4959,6 +5047,300 @@ function initPlanModeButtons(){
 }
 
 initPlanModeButtons();
+
+
+// ============================================================
+// METAS FLEXÍVEIS DA SEMANA — apenas no modo Variado por dia
+// ============================================================
+let pendingFlexGoalSwap=null;
+let flexGoalTimer=null;
+
+function variedGoalModeActive(){
+  return state.profile?.objective==="lose"
+    && state.profile?.caloriePlanMode==="weekday"
+    && state.profile?.calorieScheduleEnabled===true
+    && Number(state.profile?.age)>=20;
+}
+
+function updateSwapGoalMenuVisibility(){
+  if(typeof menuSwapGoal==="undefined")return;
+  menuSwapGoal.classList.toggle("hidden",!variedGoalModeActive());
+}
+
+function weekDatesFor(date=new Date()){
+  const start=weekStartDate(date);
+  return Array.from({length:7},(_,i)=>{
+    const d=new Date(start);
+    d.setDate(start.getDate()+i);
+    d.setHours(12,0,0,0);
+    return d;
+  });
+}
+
+function planItemShortLabel(item){
+  if(!item)return "—";
+  if(item.mode==="maintenance")return "Manutenção";
+  if(item.mode==="intake")return `Consumo ${fmt(item.value)} kcal`;
+  return `Déficit ${fmt(item.value)} kcal`;
+}
+
+function goalForPlanItem(item){
+  const maintenance=estimateAdultMaintenance(state.profile);
+  if(!(maintenance>0)||!item)return null;
+  if(item.mode==="maintenance")return Math.round(maintenance);
+  if(item.mode==="intake")return Math.round(Math.max(1200,Number(item.value)||maintenance));
+  return Math.round(Math.max(1200,maintenance-Math.min(1000,Math.max(0,Number(item.value)||0))));
+}
+
+function fillSwapGoalSelects(){
+  const dates=weekDatesFor(new Date());
+  const makeOptions=selected=>dates.map(d=>{
+    const item=effectiveDailyPlanItem(state.profile,d);
+    const day=d.toLocaleDateString("pt-BR",{weekday:"long"});
+    const date=d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
+    return `<option value="${localDateKey(d)}" ${localDateKey(d)===selected?"selected":""}>${day} (${date}) — ${planItemShortLabel(item)}</option>`;
+  }).join("");
+
+  const first=dates[0],second=dates[1]||dates[0];
+  swapGoalFrom.innerHTML=makeOptions(localDateKey(first));
+  swapGoalTo.innerHTML=makeOptions(localDateKey(second));
+  updateManualGoalSwapPreview();
+}
+
+function updateManualGoalSwapPreview(){
+  const a=swapGoalFrom.value?dateObj(swapGoalFrom.value):null;
+  const b=swapGoalTo.value?dateObj(swapGoalTo.value):null;
+  if(!a||!b)return;
+
+  if(localDateKey(a)===localDateKey(b)){
+    swapGoalPreview.innerHTML="Escolha dois dias diferentes.";
+    confirmManualGoalSwap.disabled=true;
+    return;
+  }
+
+  confirmManualGoalSwap.disabled=false;
+
+  const itemA=effectiveDailyPlanItem(state.profile,a);
+  const itemB=effectiveDailyPlanItem(state.profile,b);
+  const goalA=goalForPlanItem(itemA);
+  const goalB=goalForPlanItem(itemB);
+  const nameA=a.toLocaleDateString("pt-BR",{weekday:"long"});
+  const nameB=b.toLocaleDateString("pt-BR",{weekday:"long"});
+
+  swapGoalPreview.innerHTML=`
+    <b>${nameA}</b>: ${planItemShortLabel(itemA)}${goalA?` → meta ${fmt(goalA)} kcal`:""}<br>
+    <b>${nameB}</b>: ${planItemShortLabel(itemB)}${goalB?` → meta ${fmt(goalB)} kcal`:""}<br><br>
+    Após confirmar, essas duas configurações serão invertidas <b>somente nesta semana</b>.
+  `;
+}
+
+function openManualGoalSwap(){
+  if(!variedGoalModeActive())return toast("A troca de metas só está disponível no modo Variado por dia.");
+  fillSwapGoalSelects();
+  openModal("swapGoalModal");
+}
+
+swapGoalFrom.onchange=updateManualGoalSwapPreview;
+swapGoalTo.onchange=updateManualGoalSwapPreview;
+
+confirmManualGoalSwap.onclick=()=>{
+  const a=swapGoalFrom.value?dateObj(swapGoalFrom.value):null;
+  const b=swapGoalTo.value?dateObj(swapGoalTo.value):null;
+  if(!a||!b||localDateKey(a)===localDateKey(b))return toast("Escolha dois dias diferentes.");
+
+  if(!swapWeekPlanItems(a,b))return toast("Só é possível trocar metas dentro da mesma semana.");
+
+  save();
+  closeModal("swapGoalModal");
+  renderAll();
+  toast("Metas trocadas somente nesta semana.");
+};
+
+menuSwapGoal.onclick=()=>{
+  menuModal.classList.remove("open");
+  openManualGoalSwap();
+};
+
+function completedDayActualDeficit(date){
+  const maintenance=estimateAdultMaintenance(state.profile);
+  if(!(maintenance>0))return null;
+  const day=state.days[localDateKey(date)];
+  if(!hasFoodLog(day))return null;
+  const consumed=calcDayTotals(day).k;
+  return {
+    maintenance,
+    consumed,
+    deficit:Math.round(maintenance-consumed)
+  };
+}
+
+function flexSwapReviewKey(date){
+  return `${calorieWeekKey(date)}|${localDateKey(date)}`;
+}
+
+function markFlexSwapReviewed(date,result){
+  state.calorieSwapReviews=state.calorieSwapReviews||{};
+  state.calorieSwapReviews[flexSwapReviewKey(date)]={result,time:Date.now()};
+}
+
+function findFlexibleSwapCandidate(completedDate){
+  if(!variedGoalModeActive())return null;
+
+  const completedItem=effectiveDailyPlanItem(state.profile,completedDate);
+  if(completedItem?.mode!=="deficit")return null;
+
+  const actual=completedDayActualDeficit(completedDate);
+  if(!actual||actual.deficit<=0)return null;
+
+  const planned=Math.round(Number(completedItem.value)||0);
+  const miss=Math.abs(actual.deficit-planned);
+
+  // Só sugere se o resultado realmente se afastou da meta do próprio dia.
+  if(miss<100)return null;
+
+  const today=new Date();today.setHours(12,0,0,0);
+  const completedKey=localDateKey(completedDate);
+  let best=null;
+
+  for(const candidateDate of weekDatesFor(completedDate)){
+    const candidateKey=localDateKey(candidateDate);
+    if(candidateKey===completedKey)continue;
+
+    // A sugestão automática usa somente dias que ainda não terminaram.
+    if(candidateDate<today)continue;
+
+    const candidateItem=effectiveDailyPlanItem(state.profile,candidateDate);
+    if(candidateItem?.mode!=="deficit")continue;
+
+    const candidateDeficit=Math.round(Number(candidateItem.value)||0);
+    if(!(candidateDeficit>0))continue;
+
+    const diff=Math.abs(actual.deficit-candidateDeficit);
+    const tolerance=Math.max(100,Math.round(candidateDeficit*.15));
+
+    // Tem que estar perto da outra meta e claramente mais perto dela
+    // do que da meta originalmente prevista.
+    if(diff>tolerance||diff+75>=miss)continue;
+
+    if(!best||diff<best.diff){
+      best={
+        completedDate:new Date(completedDate),
+        candidateDate:new Date(candidateDate),
+        completedItem,
+        candidateItem,
+        actual,
+        planned,
+        candidateDeficit,
+        diff
+      };
+    }
+  }
+
+  return best;
+}
+
+function showFlexibleGoalSuggestion(candidate){
+  pendingFlexGoalSwap=candidate;
+
+  const a=candidate.completedDate;
+  const b=candidate.candidateDate;
+  const aName=a.toLocaleDateString("pt-BR",{weekday:"long"});
+  const bName=b.toLocaleDateString("pt-BR",{weekday:"long"});
+
+  flexGoalSuggestionText.innerHTML=`
+    <div class="insight-note">
+      Seu déficit de <b>${aName}</b> ficou em aproximadamente
+      <b>${fmt(candidate.actual.deficit)} kcal</b>, enquanto a meta daquele dia era
+      <b>${fmt(candidate.planned)} kcal</b>.
+    </div>
+
+    <p style="margin-top:12px">
+      Esse resultado ficou parecido com a meta de <b>${bName}</b>,
+      que é de <b>${fmt(candidate.candidateDeficit)} kcal</b>.
+    </p>
+
+    <p>
+      Deseja considerar a meta de <b>${bName}</b> como a meta cumprida em ${aName}
+      e transferir a meta de <b>${fmt(candidate.planned)} kcal</b> para ${bName}?
+    </p>
+
+    <p class="note">
+      Se confirmar, a troca vale somente para esta semana. As próximas semanas continuam com seu planejamento normal.
+    </p>
+  `;
+
+  openModal("flexGoalSuggestionModal");
+}
+
+function dismissFlexibleGoalSuggestion(result="cancelled"){
+  if(pendingFlexGoalSwap){
+    markFlexSwapReviewed(pendingFlexGoalSwap.completedDate,result);
+    save();
+  }
+  pendingFlexGoalSwap=null;
+  closeModal("flexGoalSuggestionModal");
+}
+
+cancelFlexGoalSwap.onclick=()=>dismissFlexibleGoalSuggestion("cancelled");
+dismissFlexGoalX.onclick=()=>dismissFlexibleGoalSuggestion("cancelled");
+
+confirmFlexGoalSwap.onclick=()=>{
+  if(!pendingFlexGoalSwap)return closeModal("flexGoalSuggestionModal");
+
+  const {completedDate,candidateDate}=pendingFlexGoalSwap;
+  const ok=swapWeekPlanItems(completedDate,candidateDate);
+  markFlexSwapReviewed(completedDate,ok?"accepted":"failed");
+  pendingFlexGoalSwap=null;
+  save();
+  closeModal("flexGoalSuggestionModal");
+  renderAll();
+  if(ok)toast("Metas reorganizadas somente nesta semana.");
+};
+
+function checkFlexibleGoalSuggestion(){
+  updateSwapGoalMenuVisibility();
+  if(!variedGoalModeActive())return;
+  if(document.querySelector(".modal.open")||menuModal.classList.contains("open"))return;
+
+  const now=new Date();now.setHours(12,0,0,0);
+  const week=weekDatesFor(now);
+
+  // Procura o dia concluído mais recente ainda não revisado.
+  const completed=week
+    .filter(d=>d<now)
+    .sort((a,b)=>b-a);
+
+  for(const d of completed){
+    const reviewKey=flexSwapReviewKey(d);
+    if(state.calorieSwapReviews?.[reviewKey])continue;
+    if(!hasFoodLog(state.days[localDateKey(d)]))continue;
+
+    const candidate=findFlexibleSwapCandidate(d);
+    if(candidate){
+      showFlexibleGoalSuggestion(candidate);
+      return;
+    }
+
+    // Se havia registro mas não havia troca útil, marca como revisado
+    // para não reprocessar o mesmo dia toda vez.
+    markFlexSwapReviewed(d,"no-match");
+    save();
+  }
+}
+
+function scheduleNextFlexibleGoalCheck(){
+  if(flexGoalTimer)clearTimeout(flexGoalTimer);
+  const now=new Date();
+  const next=new Date(now);
+  next.setHours(24,0,3,0);
+  const wait=Math.max(1000,next-now);
+  flexGoalTimer=setTimeout(()=>{
+    checkFlexibleGoalSuggestion();
+    scheduleNextFlexibleGoalCheck();
+  },Math.min(wait,2147483647));
+}
+
+scheduleNextFlexibleGoalCheck();
 
 // PWA
 if("serviceWorker" in navigator && location.protocol.startsWith("http")){
