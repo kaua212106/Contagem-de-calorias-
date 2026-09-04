@@ -1,11 +1,12 @@
-const CACHE_NAME = 'contador-de-calorias-auto';
+const CACHE_NAME = 'contador-de-calorias-auto-v2-central-sync';
 const CACHE_PREFIX = 'contador-de-calorias-';
 
 const OFFLINE_FILES = [
   './index.html',
   './manifest.json',
   './icone.png',
-  './auth-guard-v3.js'
+  './auth-guard-v3.js',
+  './central-sync.js'
 ];
 
 // Instala e busca os arquivos direto da rede, evitando reutilizar
