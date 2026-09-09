@@ -1,4 +1,4 @@
-const CACHE_NAME = 'contador-de-calorias-auto-v2-central-sync';
+const CACHE_NAME = 'contador-de-calorias-auto-v3-central-sync';
 const CACHE_PREFIX = 'contador-de-calorias-';
 
 const OFFLINE_FILES = [
