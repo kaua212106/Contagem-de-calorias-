@@ -1289,6 +1289,7 @@ body.dark .daily-cal-row{
   <div class="insight-note" id="reliefPreview" style="margin-top:10px"></div>
   <div class="actions">
     <button class="btn-neutral" data-close="relieveDeficitModal">Cancelar</button>
+    <button class="btn-red" id="removeDeficitRelief">Remover alívio</button>
     <button class="btn-primary" id="confirmDeficitRelief">Aplicar alívio</button>
   </div>
 </div></div>
@@ -4177,7 +4178,7 @@ reportHtml=function(){const base=v12ReportHtml(),w=weekData(),logged=w.filter(x=
 
 // ---------- Render orchestration ----------
 const v12RenderToday=renderToday;
-renderToday=function(){v12RenderToday();const __t=calcDayTotals(ensureDay()),__g=profileGoal(),__over=__t.k>__g;if(__over){remaining.textContent=fmt(__t.k-__g);remainingLabel.textContent="Acima";remainingCard.classList.add("over")}else{remaining.textContent=fmt(Math.max(0,__g-__t.k));remainingLabel.textContent="Restantes";remainingCard.classList.remove("over")}renderDeficitReliefNotice();renderSmartDashboard();renderHomeQuick();renderFoodSuggestions();decorateMealTargets();improveAccessibility(document);hydrateMediaImages(document).catch(()=>{})};
+renderToday=function(){v12RenderToday();const __t=calcDayTotals(ensureDay()),__g=profileGoal(),__over=__t.k>__g;let __signed=__over?-(__t.k-__g):Math.max(0,__g-__t.k);const __reliefSent=typeof reliefSentByDate==="function"?reliefSentByDate(selectedDate):0;__signed=Math.round(__signed-__reliefSent);if(__signed<0){remaining.textContent=fmt(Math.abs(__signed));remainingLabel.textContent="Acima";remainingCard.classList.add("over")}else{remaining.textContent=fmt(__signed);remainingLabel.textContent="Restantes";remainingCard.classList.remove("over")}renderDeficitReliefNotice();renderSmartDashboard();renderHomeQuick();renderFoodSuggestions();decorateMealTargets();improveAccessibility(document);hydrateMediaImages(document).catch(()=>{})};
 const v12RenderHistory=renderHistory;
 renderHistory=function(){v12RenderHistory();renderWeeklyOverview();renderQuickDayComparison();renderWeightProjection();improveAccessibility(document)};
 const v12RenderProfileV13=renderProfile;
@@ -5432,6 +5433,7 @@ function renderDeficitReliefNotice(){
 
 function fillDeficitReliefTarget(){
   const select=document.getElementById("reliefTargetDate");
+  const removeBtn=document.getElementById("removeDeficitRelief");
   if(!select)return;
   const today=new Date();today.setHours(12,0,0,0);
   const dates=weekDatesFor(today);
@@ -5440,14 +5442,16 @@ function fillDeficitReliefTarget(){
     const futureOrToday=d>=today;
     if(!futureOrToday||item?.mode!=="deficit")return "";
     const currentTarget=Math.max(0,Math.round(Number(goalForPlanItem(item))||0));
+    const existing=reliefTransfersForWeek(d).filter(t=>t.targetDate===localDateKey(d));
     const day=d.toLocaleDateString("pt-BR",{weekday:"long"});
     const date=d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
-    return `<option value="${localDateKey(d)}">${day} (${date}) — meta ${fmt(currentTarget)} kcal</option>`;
+    const suffix=existing.length?` — 🩹 ${fmt(Math.abs(existing.reduce((a,t)=>a+(Number(t.total)||0),0)))} kcal de alívio aplicado`:"";
+    return `<option value="${localDateKey(d)}">${day} (${date}) — meta ${fmt(currentTarget)} kcal${suffix}</option>`;
   }).filter(Boolean).join("");
-  select.innerHTML=options||'<option value="">Nenhum dia futuro disponível</option>';
+  select.innerHTML=options||'<option value="">Nenhum dia disponível</option>';
   updateDeficitReliefPreview();
+  if(removeBtn)removeBtn.disabled=!select.value||!reliefTransfersForWeek(dateObj(select.value)).some(t=>t.targetDate===select.value);
 }
-
 function updateDeficitReliefPreview(){
   const select=document.getElementById("reliefTargetDate");
   const box=document.getElementById("reliefPreview");
@@ -5469,6 +5473,7 @@ function updateDeficitReliefPreview(){
     .sort((a,b)=>a.date-b.date);
 
   const item=effectiveDailyPlanItem(state.profile,target);
+  const existingTransfers=reliefTransfersForWeek(target).filter(t=>t.targetDate===localDateKey(target));
   const currentDeficit=Math.max(0,Math.round(Number(item?.value)||0));
   const currentTarget=Math.max(0,Math.round(Number(goalForPlanItem(item))||0));
   const netBalance=Math.round(balances.reduce((s,x)=>s+x.balance,0));
@@ -5479,6 +5484,9 @@ function updateDeficitReliefPreview(){
     box.innerHTML="Você ainda não tem <b>saldo de dias anteriores</b> disponível nesta semana.";
     confirm.disabled=true;
     confirm.dataset.reliefAmount="0";
+    const removeBtn=document.getElementById("removeDeficitRelief");
+    if(removeBtn)removeBtn.disabled=existingTransfers.length===0;
+    if(existingTransfers.length)box.innerHTML+=`<br><br><b>Há um alívio aplicado neste dia.</b> Você pode removê-lo para devolver os saldos aos dias de origem.`;
     return;
   }
 
@@ -5507,7 +5515,34 @@ function updateDeficitReliefPreview(){
   `;
   confirm.disabled=netBalance===0;
   confirm.dataset.reliefAmount=String(netBalance);
+  const removeBtn=document.getElementById("removeDeficitRelief");
+  if(removeBtn)removeBtn.disabled=existingTransfers.length===0;
+  if(existingTransfers.length){
+    const totalApplied=existingTransfers.reduce((s,t)=>s+(Number(t.total)||0),0);
+    box.innerHTML+=`<hr style="border:0;border-top:1px solid var(--border);margin:10px 0"><b>Alívio já aplicado neste dia:</b> ${fmt(Math.abs(totalApplied))} kcal.<br>Se remover, os saldos usados voltarão aos respectivos dias de origem.`;
+  }
 }
+
+document.getElementById("removeDeficitRelief")?.addEventListener("click",()=>{
+  const select=document.getElementById("reliefTargetDate");
+  const targetKey=select?.value;
+  if(!targetKey)return;
+  const target=dateObj(targetKey);
+  const transfers=reliefTransfersForWeek(target).filter(t=>t.targetDate===targetKey);
+  if(!transfers.length)return toast("Esse dia não possui um alívio aplicado.");
+  const targetItem=effectiveDailyPlanItem(state.profile,target);
+  if(targetItem?.mode!=="deficit")return toast("Não foi possível restaurar a meta desse dia.");
+  // Ao remover todos os alívios daquele dia, volta à meta de déficit existente antes do primeiro alívio.
+  const ordered=[...transfers].sort((a,b)=>(Number(a.time)||0)-(Number(b.time)||0));
+  const restoredDeficit=Math.max(0,Math.round(Number(ordered[0].previousDeficit ?? targetItem.value)||0));
+  const ids=new Set(transfers.map(t=>t.id));
+  state.deficitReliefTransfers=(state.deficitReliefTransfers||[]).filter(t=>!ids.has(t.id));
+  saveWeekPlanItem(target,{mode:"deficit",value:restoredDeficit});
+  save();
+  closeModal("relieveDeficitModal");
+  renderAll();
+  toast(`🩹 Alívio removido de ${target.toLocaleDateString("pt-BR",{weekday:"long"})}. Os saldos voltaram aos dias de origem.`);
+});
 
 function openDeficitRelief(){
   if(!deficitReliefModeActive())return toast("O alívio de déficit só está disponível no modo Variado por dia.");
@@ -5557,6 +5592,7 @@ document.getElementById("confirmDeficitRelief")?.addEventListener("click",()=>{
     week:calorieWeekKey(target),
     targetDate:localDateKey(target),
     total:netBalance,
+    previousDeficit:currentDeficit,
     sources,
     time:Date.now()
   });
