@@ -1239,7 +1239,7 @@ body.dark .daily-cal-row{
 <div class="menu-modal" id="menuModal"><div class="menu-box">
   <h2>Menu</h2>
   <button class="menu-item menu-profile" id="menuProfile">🎯 Perfil e metas</button>
-  <button class="menu-item menu-swap hidden" id="menuSwapGoal">🔄 Trocar meta</button>
+  <button class="menu-item menu-swap hidden" id="menuSwapGoal">🔄 Trocar meta</button>\n  <button class="menu-item menu-relief hidden" id="menuRelieveDeficit">🩹 Aliviar déficit</button>
   <button class="menu-item menu-report" id="menuGlobalSearch">🔎 Pesquisa global</button>
   <button class="menu-item menu-theme" id="menuTrash">🗑️ Lixeira</button>
   <button class="menu-item menu-report" id="menuPlanner">🗓️ Planejamento semanal</button>
@@ -1272,7 +1272,21 @@ body.dark .daily-cal-row{
   </div>
 </div></div>
 
-<!-- SUGESTÃO DE META FLEXÍVEL -->
+
+
+<!-- ALIVIAR DÉFICIT -->
+<div class="modal" id="relieveDeficitModal"><div class="modal-box">
+  <div class="modal-title"><h2>🩹 Aliviar déficit</h2><button class="modal-close" data-close="relieveDeficitModal">×</button></div>
+  <p class="note">Use o excedente de déficit que sobrou em dias anteriores para reduzir a meta de um dia futuro. O planejamento padrão das próximas semanas não muda.</p>
+  <label>Dia que você quer aliviar</label>
+  <select id="reliefTargetDate"></select>
+  <div class="insight-note" id="reliefPreview" style="margin-top:10px"></div>
+  <div class="actions">
+    <button class="btn-neutral" data-close="relieveDeficitModal">Cancelar</button>
+    <button class="btn-primary" id="confirmDeficitRelief">Aplicar alívio</button>
+  </div>
+</div></div>
+\n<!-- SUGESTÃO DE META FLEXÍVEL -->
 <div class="modal" id="flexGoalSuggestionModal"><div class="modal-box">
   <div class="modal-title"><h2>🔄 Ajustar meta da semana?</h2><button class="modal-close" id="dismissFlexGoalX">×</button></div>
   <div id="flexGoalSuggestionText"></div>
@@ -1748,7 +1762,7 @@ const BASE_FOODS=[
  {n:"Brócolis cozido",k:25,p:2.1,c:4.4,f:.4,fiber:3.3,sugar:1.4,sodium:33,chol:0,servingG:100,s:"Base brasileira"}
 ];
 const DEFAULT_MEALS=["Café da manhã","Almoço","Lanche","Jantar","Ceia"];
-const DEFAULT_STATE={version:15,profile:{sex:"male",age:null,weight:null,height:null,activity:1.2,objective:"maintain",calorieGoal:2000,targetWeight:null,weeklyDeficitKcal:0,maintenanceDay:0,calorieScheduleEnabled:false,caloriePlanMode:"fixed",dailyCaloriePlan:null,maintenanceReferenceKcal:null,weekdayPlanStartDate:null,historicalFixedCalorieGoal:null,waterGoalMl:2000,waterGoalMode:"auto",waterMlPerKg:35,macroTargets:{p:0,c:0,f:0},mealTargets:{},nutrientTargets:{}},settings:{dark:false,bg:"#667eea",tracked:["fiber","sugar","sodium","chol"],homeCards:{calories:true,progress:true,smart:true,quick:true,suggestions:true,streak:true,meals:true,notes:true},onboarded:false,fontScale:"normal",reduceMotion:false},days:{},plans:{},shoppingList:[],trash:[],weights:[],recipes:[],customFoods:[],favorites:[],recentFoods:[],savedMeals:[],mealNames:[...DEFAULT_MEALS],reminders:[],waterContainers:[{id:"cup250",name:"Copo",ml:250},{id:"bottle500",name:"Garrafa",ml:500}],offCache:{},onlineProductCatalog:[],calorieWeekOverrides:{},calorieSwapReviews:{},autoBackups:[]};
+const DEFAULT_STATE={version:15,profile:{sex:"male",age:null,weight:null,height:null,activity:1.2,objective:"maintain",calorieGoal:2000,targetWeight:null,weeklyDeficitKcal:0,maintenanceDay:0,calorieScheduleEnabled:false,caloriePlanMode:"fixed",dailyCaloriePlan:null,maintenanceReferenceKcal:null,weekdayPlanStartDate:null,historicalFixedCalorieGoal:null,waterGoalMl:2000,waterGoalMode:"auto",waterMlPerKg:35,macroTargets:{p:0,c:0,f:0},mealTargets:{},nutrientTargets:{}},settings:{dark:false,bg:"#667eea",tracked:["fiber","sugar","sodium","chol"],homeCards:{calories:true,progress:true,smart:true,quick:true,suggestions:true,streak:true,meals:true,notes:true},onboarded:false,fontScale:"normal",reduceMotion:false},days:{},plans:{},shoppingList:[],trash:[],weights:[],recipes:[],customFoods:[],favorites:[],recentFoods:[],savedMeals:[],mealNames:[...DEFAULT_MEALS],reminders:[],waterContainers:[{id:"cup250",name:"Copo",ml:250},{id:"bottle500",name:"Garrafa",ml:500}],offCache:{},onlineProductCatalog:[],calorieWeekOverrides:{},calorieSwapReviews:{},deficitReliefTransfers:[],autoBackups:[]};
 function deepMerge(base,src){if(Array.isArray(base))return Array.isArray(src)?src:base;if(typeof base!=="object"||base===null)return src??base;const out={...base};if(src&&typeof src==="object")Object.keys(src).forEach(k=>out[k]=k in base?deepMerge(base[k],src[k]):src[k]);return out}
 function migrateOldState(){if(localStorage.getItem("minhasCaloriasCompleto"))return null;try{const old=JSON.parse(localStorage.getItem("caloriasApp")||"null");if(!old)return null;const n=clone(DEFAULT_STATE);n.profile.calorieGoal=Number(old.goal)||2000;n.profile={...n.profile,...(old.profile||{}),calorieGoal:Number(old.goal)||2000,macroTargets:old.macroTargets||n.profile.macroTargets,waterGoalMl:(Number(old.waterGoalCups)||8)*250};n.settings.dark=!!old.dark;n.days={};Object.entries(old.days||{}).forEach(([k,d])=>{n.days[k]={meals:{},water:[],note:"",mealPhotos:{}};n.mealNames.forEach(m=>n.days[k].meals[m]=clone(d[m]||[]).map(x=>({...x,id:x.id||uid(),fiber:x.fiber||0,sugar:x.sugar||0,sodium:x.sodium||0,chol:x.chol||0}))) });Object.entries(old.water||{}).forEach(([k,count])=>{n.days[k]=n.days[k]||{meals:{},water:[],note:"",mealPhotos:{}};n.mealNames.forEach(m=>n.days[k].meals[m]=n.days[k].meals[m]||[]);if(Number(count)>0)n.days[k].water=[{ml:Number(count)*250,time:"importado"}]});n.weights=clone(old.weights||[]);n.savedMeals=clone(old.savedMeals||[]);return n}catch(e){return null}}
 function upgradeState(s){
@@ -5323,9 +5337,180 @@ function variedGoalModeActive(){
     && dateUsesWeekdayPlan(state.profile,new Date());
 }
 
+
+function deficitReliefModeActive(){
+  return variedGoalModeActive();
+}
+
+function reliefTransfersForWeek(date=new Date()){
+  const wk=calorieWeekKey(date);
+  return Array.isArray(state.deficitReliefTransfers)
+    ? state.deficitReliefTransfers.filter(x=>x?.week===wk)
+    : [];
+}
+
+function reliefReceivedByDate(date){
+  const dk=localDateKey(date);
+  return reliefTransfersForWeek(date).reduce((sum,t)=>{
+    return sum+(t.targetDate===dk?Number(t.total)||0:0);
+  },0);
+}
+
+function reliefSentByDate(date){
+  const dk=localDateKey(date);
+  return reliefTransfersForWeek(date).reduce((sum,t)=>{
+    return sum+(t.sources||[]).reduce((s,x)=>s+(x.date===dk?Number(x.amount)||0:0),0);
+  },0);
+}
+
+function reliefBaselinePlanDeficit(date){
+  const item=effectiveDailyPlanItem(state.profile,date);
+  if(!item||item.mode!=="deficit")return 0;
+  // If this day already received relief, restore that relief to recover
+  // the planned deficit that existed before the relief was applied.
+  return Math.max(0,Math.min(1000,Number(item.value)||0)+reliefReceivedByDate(date));
+}
+
+function availableDeficitCredit(date){
+  const actual=completedDayActualDeficit(date);
+  if(!actual||actual.deficit<=0)return 0;
+  const planned=reliefBaselinePlanDeficit(date);
+  if(!(planned>0))return 0;
+  return Math.max(0,Math.round(actual.deficit-planned-reliefSentByDate(date)));
+}
+
+function fillDeficitReliefTarget(){
+  const select=document.getElementById("reliefTargetDate");
+  if(!select)return;
+  const today=new Date();today.setHours(12,0,0,0);
+  const dates=weekDatesFor(today);
+  const options=dates.map(d=>{
+    const item=effectiveDailyPlanItem(state.profile,d);
+    const futureOrToday=d>=today;
+    if(!futureOrToday||item?.mode!=="deficit")return "";
+    const target=Math.max(0,Math.round(Number(item.value)||0));
+    const received=reliefReceivedByDate(d);
+    const remaining=Math.max(0,target-received);
+    const day=d.toLocaleDateString("pt-BR",{weekday:"long"});
+    const date=d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
+    return `<option value="${localDateKey(d)}">${day} (${date}) — meta ${fmt(target)} kcal • pode aliviar ${fmt(remaining)} kcal</option>`;
+  }).filter(Boolean).join("");
+  select.innerHTML=options||'<option value="">Nenhum dia futuro disponível</option>';
+  updateDeficitReliefPreview();
+}
+
+function updateDeficitReliefPreview(){
+  const select=document.getElementById("reliefTargetDate");
+  const box=document.getElementById("reliefPreview");
+  const confirm=document.getElementById("confirmDeficitRelief");
+  if(!select||!box||!confirm)return;
+
+  const target=select.value?dateObj(select.value):null;
+  if(!target){
+    box.textContent="Não há um dia futuro com meta de déficit disponível.";
+    confirm.disabled=true;
+    return;
+  }
+
+  const today=new Date();today.setHours(12,0,0,0);
+  const credits=weekDatesFor(target)
+    .filter(d=>d<today)
+    .map(d=>({date:d,credit:availableDeficitCredit(d)}))
+    .filter(x=>x.credit>0)
+    .sort((a,b)=>a.date-b.date);
+
+  const item=effectiveDailyPlanItem(state.profile,target);
+  const targetDeficit=Math.max(0,Math.round(Number(item?.value)||0));
+  const already=reliefReceivedByDate(target);
+  const remainingTarget=Math.max(0,targetDeficit-already);
+  const totalCredit=credits.reduce((s,x)=>s+x.credit,0);
+  const relief=Math.min(remainingTarget,totalCredit);
+  const newTarget=Math.max(0,targetDeficit-relief);
+
+  if(!credits.length){
+    box.innerHTML="Você ainda não tem <b>déficit excedente</b> disponível nos dias anteriores desta semana.";
+    confirm.disabled=true;
+    return;
+  }
+
+  const lines=credits.map(x=>{
+    const name=x.date.toLocaleDateString("pt-BR",{weekday:"long"});
+    return `<div>• ${name}: <b>${fmt(x.credit)} kcal</b> disponíveis</div>`;
+  }).join("");
+
+  const targetName=target.toLocaleDateString("pt-BR",{weekday:"long"});
+  box.innerHTML=`
+    <b>Créditos disponíveis:</b><br>${lines}
+    <hr style="border:0;border-top:1px solid var(--border);margin:10px 0">
+    <b>${targetName}</b>: meta atual de ${fmt(targetDeficit)} kcal<br>
+    Será abatido: <b>${fmt(relief)} kcal</b><br>
+    Nova meta: <b>${fmt(newTarget)} kcal de déficit</b>
+  `;
+  confirm.disabled=relief<=0;
+  confirm.dataset.reliefAmount=String(relief);
+}
+
+function openDeficitRelief(){
+  if(!deficitReliefModeActive())return toast("O alívio de déficit só está disponível no modo Variado por dia.");
+  fillDeficitReliefTarget();
+  openModal("relieveDeficitModal");
+}
+
+document.getElementById("reliefTargetDate")?.addEventListener("change",updateDeficitReliefPreview);
+
+document.getElementById("confirmDeficitRelief")?.addEventListener("click",()=>{
+  const targetEl=document.getElementById("reliefTargetDate");
+  const amount=Number(document.getElementById("confirmDeficitRelief")?.dataset.reliefAmount)||0;
+  if(!targetEl?.value||amount<=0)return;
+
+  const target=dateObj(targetEl.value);
+  const today=new Date();today.setHours(12,0,0,0);
+  if(target<today)return toast("Escolha um dia de hoje ou futuro.");
+
+  const item=effectiveDailyPlanItem(state.profile,target);
+  if(item?.mode!=="deficit")return toast("O dia escolhido precisa ter uma meta de déficit.");
+
+  let remaining=amount;
+  const sources=[];
+  const credits=weekDatesFor(target)
+    .filter(d=>d<today)
+    .map(d=>({date:d,credit:availableDeficitCredit(d)}))
+    .filter(x=>x.credit>0)
+    .sort((a,b)=>a.date-b.date);
+
+  for(const x of credits){
+    if(remaining<=0)break;
+    const used=Math.min(remaining,x.credit);
+    sources.push({date:localDateKey(x.date),amount:Math.round(used)});
+    remaining-=used;
+  }
+
+  const actualAmount=amount-remaining;
+  if(actualAmount<=0)return toast("Não há crédito de déficit suficiente.");
+
+  state.deficitReliefTransfers=state.deficitReliefTransfers||[];
+  state.deficitReliefTransfers.push({
+    id:uid(),
+    week:calorieWeekKey(target),
+    targetDate:localDateKey(target),
+    total:Math.round(actualAmount),
+    sources,
+    time:Date.now()
+  });
+
+  const newTarget=Math.max(0,Math.round(Number(item.value)||0)-Math.round(actualAmount));
+  saveWeekPlanItem(target,{mode:"deficit",value:newTarget});
+  save();
+  closeModal("relieveDeficitModal");
+  renderAll();
+  toast(`Déficit de ${fmt(actualAmount)} kcal abatido em ${target.toLocaleDateString("pt-BR",{weekday:"long"})}.`);
+});
+
 function updateSwapGoalMenuVisibility(){
   if(typeof menuSwapGoal==="undefined")return;
-  menuSwapGoal.classList.toggle("hidden",!variedGoalModeActive());
+  const active=variedGoalModeActive();
+  menuSwapGoal.classList.toggle("hidden",!active);
+  document.getElementById("menuRelieveDeficit")?.classList.toggle("hidden",!active);
 }
 
 function weekDatesFor(date=new Date()){
@@ -5421,6 +5606,10 @@ menuSwapGoal.onclick=()=>{
   menuModal.classList.remove("open");
   openManualGoalSwap();
 };
+document.getElementById("menuRelieveDeficit")?.addEventListener("click",()=>{
+  menuModal.classList.remove("open");
+  openDeficitRelief();
+});
 
 function completedDayActualDeficit(date){
   const maintenance=estimatePlanMaintenance(state.profile);
