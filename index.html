@@ -151,7 +151,7 @@ label{display:block;margin:15px 0 7px;font-weight:bold;color:#222}input,select,t
 .modal{display:none;position:fixed;inset:0;background:#0009;z-index:3000;align-items:center;justify-content:center;padding:15px}.modal.open{display:flex}.modal-box{background:#fff;width:min(520px,100%);max-height:90vh;overflow:auto;border-radius:24px;padding:22px;box-shadow:0 15px 45px #0005}.modal-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}.modal-title h2{font-size:24px}.modal-close{width:42px;height:42px;min-width:42px;border-radius:50%;background:#e93636;color:white;font-size:23px;margin:0;padding:0}.actions{display:flex;gap:10px;margin-top:18px}.actions button{flex:1;padding:13px;border-radius:12px;font-weight:bold;margin:0}
 .tabs{display:flex;background:#eeeef4;border-radius:12px;padding:4px;margin-bottom:13px;gap:3px}.tab{flex:1;padding:10px;border-radius:9px;background:transparent;font-weight:bold;color:#666;margin:0}.tab.active{background:#fff;color:var(--primary);box-shadow:0 2px 5px #0001}.hidden{display:none!important}
 .results{margin-top:10px;max-height:270px;overflow:auto}.result{padding:11px;border:1px solid #ddd;border-radius:12px;margin:7px 0;cursor:pointer}.result b{display:block}.result small{color:#777}.selected{background:#eef0ff;border:2px solid var(--primary);padding:12px;border-radius:14px;margin-top:12px}.search-row{display:flex;gap:8px}.search-row input{flex:1}.search-row button{width:52px;margin:0;border-radius:12px;background:var(--primary);color:#fff;font-size:20px}
-.menu-modal{display:none;position:fixed;inset:0;background:#000a;z-index:4000;align-items:center;justify-content:center;padding:15px}.menu-modal.open{display:flex}.menu-box{width:100%;max-width:635px;background:#fff;border-radius:25px;padding:25px;box-shadow:0 8px 25px #0004;max-height:90vh;overflow:auto}.menu-box h2{font-size:28px;margin-bottom:18px}.menu-item{width:100%;height:55px;border-radius:16px;color:#fff;font-size:18px;font-weight:bold;margin:0 0 11px;padding:0 10px}.menu-theme{background:#f9a00b}.menu-color{background:#8956ed}.menu-profile{background:#637de2}.menu-water{background:#2f8b61}.menu-export{background:#667eea}.menu-import{background:#2f8b61}.menu-reminders{background:#e83d93}.menu-report{background:#0ea5e9}.menu-close{background:#e93636}
+.menu-modal{display:none;position:fixed;inset:0;background:#000a;z-index:4000;align-items:center;justify-content:center;padding:15px}.menu-modal.open{display:flex}.menu-box{width:100%;max-width:635px;background:#fff;border-radius:25px;padding:25px;box-shadow:0 8px 25px #0004;max-height:90vh;overflow:auto}.menu-box h2{font-size:28px;margin-bottom:18px}.menu-item{width:100%;height:55px;border-radius:16px;color:#fff;font-size:18px;font-weight:bold;margin:0 0 11px;padding:0 10px}.menu-theme{background:#f9a00b}.menu-color{background:#8956ed}.menu-profile{background:#637de2}.menu-water{background:#2f8b61}.menu-export{background:#667eea}.menu-import{background:#2f8b61}.menu-reminders{background:#e83d93}.menu-report{background:#0ea5e9}.menu-relief{background:#7c5ce6}.menu-close{background:#e93636}
 .bottom{position:fixed;bottom:0;left:0;right:0;height:72px;background:rgba(255,255,255,.97);display:flex;z-index:1000;box-shadow:0 -3px 14px #0002}.nav{flex:1;background:transparent;color:#777;margin:0;padding:6px 3px;font-size:11px;font-weight:bold;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}.nav span{font-size:23px}.nav.active{color:var(--primary)}
 .water-ring{width:160px;height:160px;border-radius:50%;margin:8px auto 18px;display:grid;place-items:center;background:conic-gradient(var(--primary) 0deg,#e9e9ef 0deg);position:relative}.water-ring:after{content:"";position:absolute;width:125px;height:125px;border-radius:50%;background:#fff}.water-ring-inner{position:relative;z-index:2;text-align:center}.water-ring-inner b{display:block;font-size:28px}.water-ring-inner small{color:#777}.water-log{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #eee}.water-log button{width:auto;padding:5px 8px;margin:0;border-radius:8px;background:#fee2e2;color:#c00}
 .stat-line{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #eee}.badge{display:inline-block;font-size:11px;padding:4px 8px;border-radius:20px;background:#e8ebff;color:#4f46c5;font-weight:bold}.badge.green{background:#e8f5ef;color:#087443}.badge.orange{background:#fff4db;color:#a16207}
@@ -1239,7 +1239,8 @@ body.dark .daily-cal-row{
 <div class="menu-modal" id="menuModal"><div class="menu-box">
   <h2>Menu</h2>
   <button class="menu-item menu-profile" id="menuProfile">🎯 Perfil e metas</button>
-  <button class="menu-item menu-swap hidden" id="menuSwapGoal">🔄 Trocar meta</button>\n  <button class="menu-item menu-relief hidden" id="menuRelieveDeficit">🩹 Aliviar déficit</button>
+  <button class="menu-item menu-swap hidden" id="menuSwapGoal">🔄 Trocar meta</button>
+  <button class="menu-item menu-relief hidden" id="menuRelieveDeficit">🩹 Aliviar déficit</button>
   <button class="menu-item menu-report" id="menuGlobalSearch">🔎 Pesquisa global</button>
   <button class="menu-item menu-theme" id="menuTrash">🗑️ Lixeira</button>
   <button class="menu-item menu-report" id="menuPlanner">🗓️ Planejamento semanal</button>
@@ -5364,11 +5365,17 @@ function reliefSentByDate(date){
 }
 
 function reliefBaselinePlanDeficit(date){
-  const item=effectiveDailyPlanItem(state.profile,date);
-  if(!item||item.mode!=="deficit")return 0;
-  // If this day already received relief, restore that relief to recover
-  // the planned deficit that existed before the relief was applied.
-  return Math.max(0,Math.min(1000,Number(item.value)||0)+reliefReceivedByDate(date));
+  // O crédito precisa comparar o déficit real do dia com a meta ORIGINAL
+  // daquele dia, e não com uma meta que tenha sido alterada por um override
+  // manual. Isso também recupera corretamente créditos de dias em que o
+  // usuário já fazia esse alívio manualmente antes desta função existir.
+  const d=date instanceof Date?date:dateObj(date);
+  const base=normalizedDailyCaloriePlan(state.profile)[d.getDay()];
+  if(!base||base.mode!=="deficit")return 0;
+
+  // Se este dia já recebeu um alívio pelo sistema, esse valor é devolvido
+  // à base apenas para não transformar o mesmo excedente em crédito duas vezes.
+  return Math.max(0,Math.min(1000,Number(base.value)||0)+reliefReceivedByDate(d));
 }
 
 function availableDeficitCredit(date){
