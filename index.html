@@ -1289,7 +1289,7 @@ body.dark .daily-cal-row{
   <div class="insight-note" id="reliefPreview" style="margin-top:10px"></div>
   <div class="actions">
     <button class="btn-neutral" data-close="relieveDeficitModal">Cancelar</button>
-    <button class="btn-red" id="removeDeficitRelief">Remover alívio</button>
+    <button class="btn-red hidden" id="removeDeficitRelief">Remover alívio</button>
     <button class="btn-primary" id="confirmDeficitRelief">Aplicar alívio</button>
   </div>
 </div></div>
@@ -5450,8 +5450,19 @@ function fillDeficitReliefTarget(){
   }).filter(Boolean).join("");
   select.innerHTML=options||'<option value="">Nenhum dia disponível</option>';
   updateDeficitReliefPreview();
-  if(removeBtn)removeBtn.disabled=!select.value||!reliefTransfersForWeek(dateObj(select.value)).some(t=>t.targetDate===select.value);
+  updateRemoveDeficitReliefButton();
 }
+
+function updateRemoveDeficitReliefButton(){
+  const select=document.getElementById("reliefTargetDate");
+  const removeBtn=document.getElementById("removeDeficitRelief");
+  if(!select||!removeBtn)return;
+  const hasRelief=!!select.value && reliefTransfersForWeek(dateObj(select.value))
+    .some(t=>t.targetDate===select.value);
+  // O botão só aparece quando o dia selecionado realmente possui um alívio.
+  removeBtn.classList.toggle("hidden",!hasRelief);
+}
+
 function updateDeficitReliefPreview(){
   const select=document.getElementById("reliefTargetDate");
   const box=document.getElementById("reliefPreview");
@@ -5462,6 +5473,7 @@ function updateDeficitReliefPreview(){
   if(!target){
     box.textContent="Não há um dia futuro com meta de déficit disponível.";
     confirm.disabled=true;
+    updateRemoveDeficitReliefButton();
     return;
   }
 
@@ -5484,8 +5496,7 @@ function updateDeficitReliefPreview(){
     box.innerHTML="Você ainda não tem <b>saldo de dias anteriores</b> disponível nesta semana.";
     confirm.disabled=true;
     confirm.dataset.reliefAmount="0";
-    const removeBtn=document.getElementById("removeDeficitRelief");
-    if(removeBtn)removeBtn.disabled=existingTransfers.length===0;
+    updateRemoveDeficitReliefButton();
     if(existingTransfers.length)box.innerHTML+=`<br><br><b>Há um alívio aplicado neste dia.</b> Você pode removê-lo para devolver os saldos aos dias de origem.`;
     return;
   }
@@ -5515,8 +5526,7 @@ function updateDeficitReliefPreview(){
   `;
   confirm.disabled=netBalance===0;
   confirm.dataset.reliefAmount=String(netBalance);
-  const removeBtn=document.getElementById("removeDeficitRelief");
-  if(removeBtn)removeBtn.disabled=existingTransfers.length===0;
+  updateRemoveDeficitReliefButton();
   if(existingTransfers.length){
     const totalApplied=existingTransfers.reduce((s,t)=>s+(Number(t.total)||0),0);
     box.innerHTML+=`<hr style="border:0;border-top:1px solid var(--border);margin:10px 0"><b>Alívio já aplicado neste dia:</b> ${fmt(Math.abs(totalApplied))} kcal.<br>Se remover, os saldos usados voltarão aos respectivos dias de origem.`;
@@ -5550,7 +5560,10 @@ function openDeficitRelief(){
   openModal("relieveDeficitModal");
 }
 
-document.getElementById("reliefTargetDate")?.addEventListener("change",updateDeficitReliefPreview);
+document.getElementById("reliefTargetDate")?.addEventListener("change",()=>{
+  updateDeficitReliefPreview();
+  updateRemoveDeficitReliefButton();
+});
 
 document.getElementById("confirmDeficitRelief")?.addEventListener("click",()=>{
   const targetEl=document.getElementById("reliefTargetDate");
