@@ -932,6 +932,11 @@ body.dark .daily-cal-row{
     <div class="contador goal"><span id="goal">2000</span><small id="goalLabel">Meta</small></div>
   </section>
 
+  <section class="card hidden" id="deficitReliefNotice">
+    <div class="section-title"><h2>🩹 Alívio de déficit</h2></div>
+    <div id="deficitReliefNoticeBody"></div>
+  </section>
+
   <section class="card" data-home-card="progress">
     <div class="progress-head"><b>Progresso do dia</b><span id="percent">0%</span></div>
     <div class="progress"><div id="progressBar"></div></div>
@@ -1278,7 +1283,7 @@ body.dark .daily-cal-row{
 <!-- ALIVIAR DÉFICIT -->
 <div class="modal" id="relieveDeficitModal"><div class="modal-box">
   <div class="modal-title"><h2>🩹 Aliviar déficit</h2><button class="modal-close" data-close="relieveDeficitModal">×</button></div>
-  <p class="note">Use o excedente de déficit que sobrou em dias anteriores para reduzir a meta de um dia futuro. O planejamento padrão das próximas semanas não muda.</p>
+  <p class="note">Use o saldo dos dias anteriores para aliviar um dia futuro. Quando houver kcal restantes, a meta de consumo do dia futuro <b>aumenta</b> e o déficit diminui. O planejamento padrão das próximas semanas não muda.</p>
   <label>Dia que você quer aliviar</label>
   <select id="reliefTargetDate"></select>
   <div class="insight-note" id="reliefPreview" style="margin-top:10px"></div>
@@ -1943,7 +1948,7 @@ function dailyPlanGoal(profile,date){
   if(item.mode==="maintenance")return Math.round(maintenance);
   if(item.mode==="intake")return Math.round(Math.max(1200,item.value||maintenance));
 
-  const deficit=Math.max(0,Math.min(1000,item.value||0));
+  const deficit=Math.max(0,Number(item.value)||0);
   return Math.round(Math.max(1200,maintenance-deficit));
 }
 
@@ -4172,7 +4177,7 @@ reportHtml=function(){const base=v12ReportHtml(),w=weekData(),logged=w.filter(x=
 
 // ---------- Render orchestration ----------
 const v12RenderToday=renderToday;
-renderToday=function(){v12RenderToday();const __t=calcDayTotals(ensureDay()),__g=profileGoal(),__over=__t.k>__g;if(__over){remaining.textContent=fmt(__t.k-__g);remainingLabel.textContent="Acima";remainingCard.classList.add("over")}else{remaining.textContent=fmt(Math.max(0,__g-__t.k));remainingLabel.textContent="Restantes";remainingCard.classList.remove("over")}renderSmartDashboard();renderHomeQuick();renderFoodSuggestions();decorateMealTargets();improveAccessibility(document);hydrateMediaImages(document).catch(()=>{})};
+renderToday=function(){v12RenderToday();const __t=calcDayTotals(ensureDay()),__g=profileGoal(),__over=__t.k>__g;if(__over){remaining.textContent=fmt(__t.k-__g);remainingLabel.textContent="Acima";remainingCard.classList.add("over")}else{remaining.textContent=fmt(Math.max(0,__g-__t.k));remainingLabel.textContent="Restantes";remainingCard.classList.remove("over")}renderDeficitReliefNotice();renderSmartDashboard();renderHomeQuick();renderFoodSuggestions();decorateMealTargets();improveAccessibility(document);hydrateMediaImages(document).catch(()=>{})};
 const v12RenderHistory=renderHistory;
 renderHistory=function(){v12RenderHistory();renderWeeklyOverview();renderQuickDayComparison();renderWeightProjection();improveAccessibility(document)};
 const v12RenderProfileV13=renderProfile;
@@ -5352,28 +5357,23 @@ function reliefTransfersForWeek(date=new Date()){
 
 function reliefReceivedByDate(date){
   const dk=localDateKey(date);
-  return reliefTransfersForWeek(date).reduce((sum,t)=>{
-    return sum+(t.targetDate===dk?Number(t.total)||0:0);
-  },0);
+  return reliefTransfersForWeek(date).reduce((sum,t)=>sum+(t.targetDate===dk?Number(t.total)||0:0),0);
 }
 
 function reliefSentByDate(date){
   const dk=localDateKey(date);
-  // Signed value: +100 means 100 kcal of extra deficit was available;
-  // -100 means the day was 100 kcal above its target and created a debt.
   return reliefTransfersForWeek(date).reduce((sum,t)=>{
     return sum+(t.sources||[]).reduce((s,x)=>s+(x.date===dk?Number(x.amount)||0:0),0);
   },0);
 }
 
-// This intentionally uses the SAME signed "Restantes/Acima" calculation
-// shown by the daily calorie counter: target calories minus calories eaten.
-// Positive = extra deficit available; negative = deficit shortfall to compensate.
+// O contador diário usa exatamente esta lógica: meta de consumo - consumo real.
+// Positivo = "Restantes"; negativo = "Acima".
 function signedRemainingAgainstDailyGoal(date){
   const d=date instanceof Date?date:dateObj(date);
   const item=effectiveDailyPlanItem(state.profile,d);
   if(!item||item.mode!=="deficit")return 0;
-  const goal=goalForPlanItem(item);
+  const goal=profileGoal(d);
   if(!(goal>0))return 0;
   const day=state.days[localDateKey(d)];
   if(!hasFoodLog(day))return 0;
@@ -5385,6 +5385,49 @@ function availableDeficitBalance(date){
   const raw=signedRemainingAgainstDailyGoal(date);
   const used=reliefSentByDate(date);
   return Math.round(raw-used);
+}
+
+function renderDeficitReliefNotice(){
+  const card=document.getElementById("deficitReliefNotice");
+  const body=document.getElementById("deficitReliefNoticeBody");
+  if(!card||!body)return;
+
+  const d=selectedDate instanceof Date?selectedDate:dateObj(selectedDate);
+  const dk=localDateKey(d);
+  const transfers=reliefTransfersForWeek(d);
+  const received=transfers.filter(t=>t.targetDate===dk);
+  const sent=transfers.flatMap(t=>(t.sources||[]).filter(x=>x.date===dk).map(x=>({transfer:t,amount:Number(x.amount)||0})));
+
+  const parts=[];
+  received.forEach(t=>{
+    const amount=Number(t.total)||0;
+    if(!amount)return;
+    const sourceNames=(t.sources||[]).map(x=>`${dateObj(x.date).toLocaleDateString("pt-BR",{weekday:"long"})} (${fmt(Math.abs(Number(x.amount)||0))} kcal)`).join(", ");
+    if(amount>0){
+      parts.push(`🩹 <b>Alívio aplicado neste dia:</b> sua meta de consumo foi aumentada em <b>${fmt(amount)} kcal</b>, usando saldo de ${sourceNames||"dias anteriores"}.`);
+    }else{
+      parts.push(`🩹 <b>Compensação aplicada neste dia:</b> sua meta de consumo foi reduzida em <b>${fmt(Math.abs(amount))} kcal</b> para compensar excesso de dias anteriores (${sourceNames||"dias anteriores"}).`);
+    }
+  });
+
+  sent.forEach(x=>{
+    const amount=x.amount;
+    if(!amount)return;
+    const target=dateObj(x.transfer.targetDate);
+    if(amount>0){
+      parts.push(`🩹 <b>Saldo emprestado deste dia:</b> ${fmt(amount)} kcal foram usadas no alívio de <b>${target.toLocaleDateString("pt-BR",{weekday:"long"})}</b>.`);
+    }else{
+      parts.push(`🩹 <b>Saldo deste dia usado para compensação:</b> ${fmt(Math.abs(amount))} kcal foram transferidas para <b>${target.toLocaleDateString("pt-BR",{weekday:"long"})}</b>.`);
+    }
+  });
+
+  if(!parts.length){
+    card.classList.add("hidden");
+    body.innerHTML="";
+    return;
+  }
+  body.innerHTML=parts.map(x=>`<div class="insight-note" style="margin-top:8px">${x}</div>`).join("");
+  card.classList.remove("hidden");
 }
 
 function fillDeficitReliefTarget(){
@@ -5419,9 +5462,6 @@ function updateDeficitReliefPreview(){
   }
 
   const today=new Date();today.setHours(12,0,0,0);
-  // Use the signed daily counter from Monday through the day before the target.
-  // +100 remaining => remove 100 kcal from the target.
-  // -100 above the target => add 100 kcal to compensate.
   const balances=weekDatesFor(target)
     .filter(d=>d<today)
     .map(d=>({date:d,balance:availableDeficitBalance(d)}))
@@ -5429,14 +5469,16 @@ function updateDeficitReliefPreview(){
     .sort((a,b)=>a.date-b.date);
 
   const item=effectiveDailyPlanItem(state.profile,target);
+  const currentDeficit=Math.max(0,Math.round(Number(item?.value)||0));
   const currentTarget=Math.max(0,Math.round(Number(goalForPlanItem(item))||0));
-  const netBalance=balances.reduce((s,x)=>s+x.balance,0);
-  const adjustment=Math.max(-1000,Math.min(1000,Math.round(netBalance)));
-  const newTarget=Math.max(0,currentTarget-adjustment);
+  const netBalance=Math.round(balances.reduce((s,x)=>s+x.balance,0));
+  const newDeficit=Math.max(0,currentDeficit-netBalance);
+  const newTarget=Math.max(0,Math.round((estimatePlanMaintenance(state.profile)||0)-newDeficit));
 
   if(!balances.length){
     box.innerHTML="Você ainda não tem <b>saldo de dias anteriores</b> disponível nesta semana.";
     confirm.disabled=true;
+    confirm.dataset.reliefAmount="0";
     return;
   }
 
@@ -5449,21 +5491,22 @@ function updateDeficitReliefPreview(){
   }).join("");
 
   const targetName=target.toLocaleDateString("pt-BR",{weekday:"long"});
-  const adjustmentText=adjustment>0
-    ? `Será abatido: <b>${fmt(adjustment)} kcal</b>`
-    : adjustment<0
-      ? `Será acrescentado: <b>${fmt(Math.abs(adjustment))} kcal</b>`
-      : `Nenhum ajuste líquido disponível`;
+  const adjustmentText=netBalance>0
+    ? `O alívio <b>aumentará a meta de consumo em ${fmt(netBalance)} kcal</b> e reduzirá o déficit desse dia.`
+    : netBalance<0
+      ? `A compensação <b>reduzirá a meta de consumo em ${fmt(Math.abs(netBalance))} kcal</b> para compensar o excesso anterior.`
+      : `Nenhum ajuste líquido disponível.`;
 
   box.innerHTML=`
     <b>Saldo dos dias anteriores:</b><br>${lines}
     <hr style="border:0;border-top:1px solid var(--border);margin:10px 0">
-    <b>${targetName}</b>: meta atual de ${fmt(currentTarget)} kcal<br>
+    <b>${targetName}</b>: meta de consumo atual ${fmt(currentTarget)} kcal<br>
     ${adjustmentText}<br>
-    Nova meta: <b>${fmt(newTarget)} kcal de déficit</b>
+    Nova meta de consumo: <b>${fmt(newTarget)} kcal</b><br>
+    Novo déficit planejado: <b>${fmt(newDeficit)} kcal</b>
   `;
-  confirm.disabled=adjustment===0;
-  confirm.dataset.reliefAmount=String(adjustment);
+  confirm.disabled=netBalance===0;
+  confirm.dataset.reliefAmount=String(netBalance);
 }
 
 function openDeficitRelief(){
@@ -5486,45 +5529,47 @@ document.getElementById("confirmDeficitRelief")?.addEventListener("click",()=>{
   const item=effectiveDailyPlanItem(state.profile,target);
   if(item?.mode!=="deficit")return toast("O dia escolhido precisa ter uma meta de déficit.");
 
-  let remaining=Math.abs(adjustment);
-  const sign=adjustment>0?1:-1;
-  const sources=[];
+  // Consome os saldos inteiros dos dias anteriores, inclusive saldos de sinais opostos.
+  // Assim, se houver +300 e -100, os dois são zerados e o alvo recebe +200.
   const balances=weekDatesFor(target)
     .filter(d=>d<today)
     .map(d=>({date:d,balance:availableDeficitBalance(d)}))
-    .filter(x=>sign>0?x.balance>0:x.balance<0)
+    .filter(x=>x.balance!==0)
     .sort((a,b)=>a.date-b.date);
 
-  for(const x of balances){
-    if(remaining<=0)break;
-    const used=Math.min(remaining,Math.abs(x.balance));
-    sources.push({date:localDateKey(x.date),amount:Math.round(sign*used)});
-    remaining-=used;
-  }
+  const netBalance=Math.round(balances.reduce((s,x)=>s+x.balance,0));
+  if(netBalance===0)return toast("Não há saldo líquido disponível para esse ajuste.");
 
-  const actualAmount=Math.abs(adjustment)-remaining;
-  if(actualAmount<=0)return toast("Não há saldo disponível para esse ajuste.");
+  const sources=balances.map(x=>({
+    date:localDateKey(x.date),
+    amount:Math.round(x.balance)
+  }));
 
-  const signedAmount=Math.round(sign*actualAmount);
+  // O valor salvo em um item "deficit" é o TAMANHO do déficit, não a meta de consumo.
+  // +100 kcal de saldo = 100 kcal a menos de déficit = déficit planejado -100.
+  // -100 kcal de saldo = 100 kcal a mais de déficit = déficit planejado +100.
+  const currentDeficit=Math.max(0,Math.round(Number(item.value)||0));
+  const newDeficit=Math.max(0,currentDeficit-netBalance);
+
   state.deficitReliefTransfers=state.deficitReliefTransfers||[];
   state.deficitReliefTransfers.push({
     id:uid(),
     week:calorieWeekKey(target),
     targetDate:localDateKey(target),
-    total:signedAmount,
+    total:netBalance,
     sources,
     time:Date.now()
   });
 
-  const currentGoal=Math.max(0,Math.round(Number(goalForPlanItem(item))||0));
-  const newTarget=Math.max(0,currentGoal-signedAmount);
-  saveWeekPlanItem(target,{mode:"deficit",value:newTarget});
+  saveWeekPlanItem(target,{mode:"deficit",value:newDeficit});
   save();
   closeModal("relieveDeficitModal");
   renderAll();
-  toast(signedAmount>0
-    ? `Déficit de ${fmt(actualAmount)} kcal abatido em ${target.toLocaleDateString("pt-BR",{weekday:"long"})}.`
-    : `Déficit de ${fmt(actualAmount)} kcal acrescentado em ${target.toLocaleDateString("pt-BR",{weekday:"long"})} para compensação.`);
+
+  const targetName=target.toLocaleDateString("pt-BR",{weekday:"long"});
+  toast(netBalance>0
+    ? `🩹 Alívio de ${fmt(netBalance)} kcal aplicado em ${targetName}.`
+    : `🩹 Compensação de ${fmt(Math.abs(netBalance))} kcal aplicada em ${targetName}.`);
 });
 
 function updateSwapGoalMenuVisibility(){
@@ -5556,7 +5601,7 @@ function goalForPlanItem(item){
   if(!(maintenance>0)||!item)return null;
   if(item.mode==="maintenance")return Math.round(maintenance);
   if(item.mode==="intake")return Math.round(Math.max(1200,Number(item.value)||maintenance));
-  return Math.round(Math.max(1200,maintenance-Math.min(1000,Math.max(0,Number(item.value)||0))));
+  return Math.round(Math.max(1200,maintenance-Math.max(0,Number(item.value)||0)));
 }
 
 function fillSwapGoalSelects(){
