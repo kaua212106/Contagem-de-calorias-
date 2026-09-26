@@ -151,7 +151,7 @@ label{display:block;margin:15px 0 7px;font-weight:bold;color:#222}input,select,t
 .modal{display:none;position:fixed;inset:0;background:#0009;z-index:3000;align-items:center;justify-content:center;padding:15px}.modal.open{display:flex}.modal-box{background:#fff;width:min(520px,100%);max-height:90vh;overflow:auto;border-radius:24px;padding:22px;box-shadow:0 15px 45px #0005}.modal-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}.modal-title h2{font-size:24px}.modal-close{width:42px;height:42px;min-width:42px;border-radius:50%;background:#e93636;color:white;font-size:23px;margin:0;padding:0}.actions{display:flex;gap:10px;margin-top:18px}.actions button{flex:1;padding:13px;border-radius:12px;font-weight:bold;margin:0}
 .tabs{display:flex;background:#eeeef4;border-radius:12px;padding:4px;margin-bottom:13px;gap:3px}.tab{flex:1;padding:10px;border-radius:9px;background:transparent;font-weight:bold;color:#666;margin:0}.tab.active{background:#fff;color:var(--primary);box-shadow:0 2px 5px #0001}.hidden{display:none!important}
 .results{margin-top:10px;max-height:270px;overflow:auto}.result{padding:11px;border:1px solid #ddd;border-radius:12px;margin:7px 0;cursor:pointer}.result b{display:block}.result small{color:#777}.selected{background:#eef0ff;border:2px solid var(--primary);padding:12px;border-radius:14px;margin-top:12px}.search-row{display:flex;gap:8px}.search-row input{flex:1}.search-row button{width:52px;margin:0;border-radius:12px;background:var(--primary);color:#fff;font-size:20px}
-.menu-modal{display:none;position:fixed;inset:0;background:#000a;z-index:4000;align-items:center;justify-content:center;padding:15px}.menu-modal.open{display:flex}.menu-box{width:100%;max-width:635px;background:#fff;border-radius:25px;padding:25px;box-shadow:0 8px 25px #0004;max-height:90vh;overflow:auto}.menu-box h2{font-size:28px;margin-bottom:18px}.menu-item{width:100%;height:55px;border-radius:16px;color:#fff;font-size:18px;font-weight:bold;margin:0 0 11px;padding:0 10px}.menu-theme{background:#f9a00b}.menu-color{background:#8956ed}.menu-profile{background:#637de2}.menu-water{background:#2f8b61}.menu-export{background:#667eea}.menu-import{background:#2f8b61}.menu-reminders{background:#e83d93}.menu-report{background:#0ea5e9}.menu-relief{background:#7c5ce6}.menu-close{background:#e93636}
+.menu-modal{display:none;position:fixed;inset:0;background:#000a;z-index:4000;align-items:center;justify-content:center;padding:15px}.menu-modal.open{display:flex}.menu-box{width:100%;max-width:635px;background:#fff;border-radius:25px;padding:25px;box-shadow:0 8px 25px #0004;max-height:90vh;overflow:auto}.menu-box h2{font-size:28px;margin-bottom:18px}.menu-item{width:100%;height:55px;border-radius:16px;color:#fff;font-size:18px;font-weight:bold;margin:0 0 11px;padding:0 10px}.menu-theme{background:#f9a00b}.menu-color{background:#8956ed}.menu-profile{background:#637de2}.menu-water{background:#2f8b61}.menu-export{background:#667eea}.menu-import{background:#2f8b61}.menu-reminders{background:#e83d93}.menu-report{background:#0ea5e9}.menu-relief{background:#7c5ce6}.menu-maintenance{background:#d98b2b}.menu-close{background:#e93636}
 .bottom{position:fixed;bottom:0;left:0;right:0;height:72px;background:rgba(255,255,255,.97);display:flex;z-index:1000;box-shadow:0 -3px 14px #0002}.nav{flex:1;background:transparent;color:#777;margin:0;padding:6px 3px;font-size:11px;font-weight:bold;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}.nav span{font-size:23px}.nav.active{color:var(--primary)}
 .water-ring{width:160px;height:160px;border-radius:50%;margin:8px auto 18px;display:grid;place-items:center;background:conic-gradient(var(--primary) 0deg,#e9e9ef 0deg);position:relative}.water-ring:after{content:"";position:absolute;width:125px;height:125px;border-radius:50%;background:#fff}.water-ring-inner{position:relative;z-index:2;text-align:center}.water-ring-inner b{display:block;font-size:28px}.water-ring-inner small{color:#777}.water-log{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #eee}.water-log button{width:auto;padding:5px 8px;margin:0;border-radius:8px;background:#fee2e2;color:#c00}
 .stat-line{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #eee}.badge{display:inline-block;font-size:11px;padding:4px 8px;border-radius:20px;background:#e8ebff;color:#4f46c5;font-weight:bold}.badge.green{background:#e8f5ef;color:#087443}.badge.orange{background:#fff4db;color:#a16207}
@@ -1246,6 +1246,7 @@ body.dark .daily-cal-row{
   <button class="menu-item menu-profile" id="menuProfile">🎯 Perfil e metas</button>
   <button class="menu-item menu-swap hidden" id="menuSwapGoal">🔄 Trocar meta</button>
   <button class="menu-item menu-relief hidden" id="menuRelieveDeficit">🩹 Aliviar déficit</button>
+  <button class="menu-item menu-maintenance hidden" id="menuExtraMaintenance">🍽️ Manutenção extra</button>
   <button class="menu-item menu-report" id="menuGlobalSearch">🔎 Pesquisa global</button>
   <button class="menu-item menu-theme" id="menuTrash">🗑️ Lixeira</button>
   <button class="menu-item menu-report" id="menuPlanner">🗓️ Planejamento semanal</button>
@@ -1291,6 +1292,20 @@ body.dark .daily-cal-row{
     <button class="btn-neutral" data-close="relieveDeficitModal">Cancelar</button>
     <button class="btn-red hidden" id="removeDeficitRelief">Remover alívio</button>
     <button class="btn-primary" id="confirmDeficitRelief">Aplicar alívio</button>
+  </div>
+</div></div>
+
+<!-- MANUTENÇÃO EXTRA -->
+<div class="modal" id="extraMaintenanceModal"><div class="modal-box">
+  <div class="modal-title"><h2>🍽️ Manutenção extra</h2><button class="modal-close" data-close="extraMaintenanceModal">×</button></div>
+  <p class="note">Escolha um dia desta semana para ficar <b>na manutenção</b>, além do dia de manutenção que já existe no planejamento. Isso remove o déficit planejado apenas desse dia.</p>
+  <label>Dia de manutenção extra</label>
+  <select id="extraMaintenanceDate"></select>
+  <div class="insight-note" id="extraMaintenancePreview" style="margin-top:10px"></div>
+  <div class="actions">
+    <button class="btn-neutral" data-close="extraMaintenanceModal">Cancelar</button>
+    <button class="btn-red hidden" id="removeExtraMaintenance">Remover manutenção extra</button>
+    <button class="btn-primary" id="confirmExtraMaintenance">Aplicar manutenção extra</button>
   </div>
 </div></div>
 <!-- SUGESTÃO DE META FLEXÍVEL -->
@@ -1769,7 +1784,7 @@ const BASE_FOODS=[
  {n:"Brócolis cozido",k:25,p:2.1,c:4.4,f:.4,fiber:3.3,sugar:1.4,sodium:33,chol:0,servingG:100,s:"Base brasileira"}
 ];
 const DEFAULT_MEALS=["Café da manhã","Almoço","Lanche","Jantar","Ceia"];
-const DEFAULT_STATE={version:15,profile:{sex:"male",age:null,weight:null,height:null,activity:1.2,objective:"maintain",calorieGoal:2000,targetWeight:null,weeklyDeficitKcal:0,maintenanceDay:0,calorieScheduleEnabled:false,caloriePlanMode:"fixed",dailyCaloriePlan:null,maintenanceReferenceKcal:null,weekdayPlanStartDate:null,historicalFixedCalorieGoal:null,waterGoalMl:2000,waterGoalMode:"auto",waterMlPerKg:35,macroTargets:{p:0,c:0,f:0},mealTargets:{},nutrientTargets:{}},settings:{dark:false,bg:"#667eea",tracked:["fiber","sugar","sodium","chol"],homeCards:{calories:true,progress:true,smart:true,quick:true,suggestions:true,streak:true,meals:true,notes:true},onboarded:false,fontScale:"normal",reduceMotion:false},days:{},plans:{},shoppingList:[],trash:[],weights:[],recipes:[],customFoods:[],favorites:[],recentFoods:[],savedMeals:[],mealNames:[...DEFAULT_MEALS],reminders:[],waterContainers:[{id:"cup250",name:"Copo",ml:250},{id:"bottle500",name:"Garrafa",ml:500}],offCache:{},onlineProductCatalog:[],calorieWeekOverrides:{},calorieSwapReviews:{},deficitReliefTransfers:[],autoBackups:[]};
+const DEFAULT_STATE={version:15,profile:{sex:"male",age:null,weight:null,height:null,activity:1.2,objective:"maintain",calorieGoal:2000,targetWeight:null,weeklyDeficitKcal:0,maintenanceDay:0,calorieScheduleEnabled:false,caloriePlanMode:"fixed",dailyCaloriePlan:null,maintenanceReferenceKcal:null,weekdayPlanStartDate:null,historicalFixedCalorieGoal:null,waterGoalMl:2000,waterGoalMode:"auto",waterMlPerKg:35,macroTargets:{p:0,c:0,f:0},mealTargets:{},nutrientTargets:{}},settings:{dark:false,bg:"#667eea",tracked:["fiber","sugar","sodium","chol"],homeCards:{calories:true,progress:true,smart:true,quick:true,suggestions:true,streak:true,meals:true,notes:true},onboarded:false,fontScale:"normal",reduceMotion:false},days:{},plans:{},shoppingList:[],trash:[],weights:[],recipes:[],customFoods:[],favorites:[],recentFoods:[],savedMeals:[],mealNames:[...DEFAULT_MEALS],reminders:[],waterContainers:[{id:"cup250",name:"Copo",ml:250},{id:"bottle500",name:"Garrafa",ml:500}],offCache:{},onlineProductCatalog:[],calorieWeekOverrides:{},calorieSwapReviews:{},deficitReliefTransfers:[],extraMaintenanceDays:[],autoBackups:[]};
 function deepMerge(base,src){if(Array.isArray(base))return Array.isArray(src)?src:base;if(typeof base!=="object"||base===null)return src??base;const out={...base};if(src&&typeof src==="object")Object.keys(src).forEach(k=>out[k]=k in base?deepMerge(base[k],src[k]):src[k]);return out}
 function migrateOldState(){if(localStorage.getItem("minhasCaloriasCompleto"))return null;try{const old=JSON.parse(localStorage.getItem("caloriasApp")||"null");if(!old)return null;const n=clone(DEFAULT_STATE);n.profile.calorieGoal=Number(old.goal)||2000;n.profile={...n.profile,...(old.profile||{}),calorieGoal:Number(old.goal)||2000,macroTargets:old.macroTargets||n.profile.macroTargets,waterGoalMl:(Number(old.waterGoalCups)||8)*250};n.settings.dark=!!old.dark;n.days={};Object.entries(old.days||{}).forEach(([k,d])=>{n.days[k]={meals:{},water:[],note:"",mealPhotos:{}};n.mealNames.forEach(m=>n.days[k].meals[m]=clone(d[m]||[]).map(x=>({...x,id:x.id||uid(),fiber:x.fiber||0,sugar:x.sugar||0,sodium:x.sodium||0,chol:x.chol||0}))) });Object.entries(old.water||{}).forEach(([k,count])=>{n.days[k]=n.days[k]||{meals:{},water:[],note:"",mealPhotos:{}};n.mealNames.forEach(m=>n.days[k].meals[m]=n.days[k].meals[m]||[]);if(Number(count)>0)n.days[k].water=[{ml:Number(count)*250,time:"importado"}]});n.weights=clone(old.weights||[]);n.savedMeals=clone(old.savedMeals||[]);return n}catch(e){return null}}
 function upgradeState(s){
@@ -5422,6 +5437,17 @@ function renderDeficitReliefNotice(){
     }
   });
 
+  const extraMaintenance=Array.isArray(state.extraMaintenanceDays)
+    ? state.extraMaintenanceDays.filter(x=>x?.week===calorieWeekKey(d)&&x?.date===dk)
+    : [];
+  extraMaintenance.forEach(x=>{
+    parts.push(`🍽️ <b>Manutenção extra neste dia:</b> a meta foi alterada para a manutenção de referência (${fmt(estimatePlanMaintenance(state.profile)||0)} kcal).`);
+  });
+
+  const extraUsedToday=Array.isArray(state.extraMaintenanceDays)
+    ? state.extraMaintenanceDays.filter(x=>x?.week===calorieWeekKey(d)&&x?.date!==dk&&x?.previousDate===dk)
+    : [];
+
   if(!parts.length){
     card.classList.add("hidden");
     body.innerHTML="";
@@ -5554,6 +5580,122 @@ document.getElementById("removeDeficitRelief")?.addEventListener("click",()=>{
   toast(`🩹 Alívio removido de ${target.toLocaleDateString("pt-BR",{weekday:"long"})}. Os saldos voltaram aos dias de origem.`);
 });
 
+function extraMaintenanceForWeek(date=new Date()){
+  const wk=calorieWeekKey(date);
+  return Array.isArray(state.extraMaintenanceDays)
+    ? state.extraMaintenanceDays.filter(x=>x?.week===wk)
+    : [];
+}
+
+function extraMaintenanceForDate(date){
+  const dk=localDateKey(date);
+  return extraMaintenanceForWeek(date).filter(x=>x.date===dk);
+}
+
+function extraMaintenanceModeActive(){
+  return variedGoalModeActive();
+}
+
+function fillExtraMaintenanceTarget(){
+  const select=document.getElementById("extraMaintenanceDate");
+  if(!select)return;
+  const today=new Date();today.setHours(12,0,0,0);
+  const dates=weekDatesFor(today);
+  const maintenanceDay=Number(state.profile.maintenanceDay)||0;
+  const options=dates.map(d=>{
+    const item=effectiveDailyPlanItem(state.profile,d);
+    const futureOrToday=d>=today;
+    const originalMaintenance=d.getDay()===maintenanceDay;
+    if(!futureOrToday||originalMaintenance||item?.mode!=="deficit")return "";
+    if(reliefTransfersForWeek(d).some(t=>t.targetDate===localDateKey(d)))return "";
+    const existing=extraMaintenanceForDate(d).length>0;
+    const day=d.toLocaleDateString("pt-BR",{weekday:"long"});
+    const date=d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
+    return `<option value="${localDateKey(d)}">${day} (${date})${existing?" — 🍽️ manutenção extra aplicada":""}</option>`;
+  }).filter(Boolean).join("");
+  select.innerHTML=options||'<option value="">Nenhum dia disponível</option>';
+  updateExtraMaintenancePreview();
+}
+
+function updateRemoveExtraMaintenanceButton(){
+  const select=document.getElementById("extraMaintenanceDate");
+  const btn=document.getElementById("removeExtraMaintenance");
+  if(!select||!btn)return;
+  btn.classList.toggle("hidden",!select.value||extraMaintenanceForDate(dateObj(select.value)).length===0);
+}
+
+function updateExtraMaintenancePreview(){
+  const select=document.getElementById("extraMaintenanceDate");
+  const box=document.getElementById("extraMaintenancePreview");
+  const confirm=document.getElementById("confirmExtraMaintenance");
+  if(!select||!box||!confirm)return;
+  const target=select.value?dateObj(select.value):null;
+  updateRemoveExtraMaintenanceButton();
+  if(!target){
+    box.textContent="Não há um dia disponível para manutenção extra.";
+    confirm.disabled=true;
+    return;
+  }
+  const existing=extraMaintenanceForDate(target).length>0;
+  const maintenance=Math.round(estimatePlanMaintenance(state.profile)||0);
+  const item=effectiveDailyPlanItem(state.profile,target);
+  const currentTarget=Math.round(goalForPlanItem(item)||0);
+  box.innerHTML=existing
+    ? `Este dia já está em <b>manutenção extra</b>, com meta de <b>${fmt(maintenance)} kcal</b>. Você pode remover a alteração.`
+    : `A meta deste dia passará de <b>${fmt(currentTarget)} kcal</b> para <b>${fmt(maintenance)} kcal</b>. O déficit planejado desse dia ficará em <b>0 kcal</b>.`;
+  confirm.disabled=existing;
+}
+
+document.getElementById("extraMaintenanceDate")?.addEventListener("change",updateExtraMaintenancePreview);
+
+document.getElementById("removeExtraMaintenance")?.addEventListener("click",()=>{
+  const select=document.getElementById("extraMaintenanceDate");
+  const key=select?.value;
+  if(!key)return;
+  const target=dateObj(key);
+  const entries=extraMaintenanceForDate(target);
+  if(!entries.length)return toast("Esse dia não possui manutenção extra.");
+  const entry=entries.sort((a,b)=>(Number(a.time)||0)-(Number(b.time)||0))[0];
+  const item=effectiveDailyPlanItem(state.profile,target);
+  if(item?.mode!=="maintenance")return toast("Não foi possível restaurar a meta desse dia.");
+  state.extraMaintenanceDays=(state.extraMaintenanceDays||[]).filter(x=>!(x.week===entry.week&&x.date===entry.date));
+  saveWeekPlanItem(target,{mode:entry.previousMode||"deficit",value:Number(entry.previousValue)||0});
+  save();
+  closeModal("extraMaintenanceModal");
+  renderAll();
+  toast(`🍽️ Manutenção extra removida de ${target.toLocaleDateString("pt-BR",{weekday:"long"})}.`);
+});
+
+function openExtraMaintenance(){
+  if(!extraMaintenanceModeActive())return toast("A manutenção extra só está disponível no modo Variado por dia.");
+  fillExtraMaintenanceTarget();
+  openModal("extraMaintenanceModal");
+}
+
+document.getElementById("confirmExtraMaintenance")?.addEventListener("click",()=>{
+  const select=document.getElementById("extraMaintenanceDate");
+  const key=select?.value;
+  if(!key)return;
+  const target=dateObj(key);
+  const today=new Date();today.setHours(12,0,0,0);
+  if(target<today)return toast("Escolha um dia de hoje ou futuro.");
+  const item=effectiveDailyPlanItem(state.profile,target);
+  if(item?.mode!=="deficit")return toast("O dia escolhido precisa ter uma meta de déficit.");
+  if(reliefTransfersForWeek(target).some(t=>t.targetDate===key))return toast("Remova primeiro o alívio desse dia.");
+  if(extraMaintenanceForDate(target).length)return toast("Esse dia já está em manutenção extra.");
+
+  state.extraMaintenanceDays=state.extraMaintenanceDays||[];
+  state.extraMaintenanceDays.push({
+    id:uid(),week:calorieWeekKey(target),date:key,
+    previousMode:item.mode,previousValue:Number(item.value)||0,time:Date.now()
+  });
+  saveWeekPlanItem(target,{mode:"maintenance",value:0});
+  save();
+  closeModal("extraMaintenanceModal");
+  renderAll();
+  toast(`🍽️ ${target.toLocaleDateString("pt-BR",{weekday:"long"})} agora é um dia de manutenção extra.`);
+});
+
 function openDeficitRelief(){
   if(!deficitReliefModeActive())return toast("O alívio de déficit só está disponível no modo Variado por dia.");
   fillDeficitReliefTarget();
@@ -5621,11 +5763,23 @@ document.getElementById("confirmDeficitRelief")?.addEventListener("click",()=>{
     : `🩹 Compensação de ${fmt(Math.abs(netBalance))} kcal aplicada em ${targetName}.`);
 });
 
+function updateExtraMaintenanceMenuVisibility(){
+  const btn=document.getElementById("menuExtraMaintenance");
+  if(!btn)return;
+  btn.classList.toggle("hidden",!extraMaintenanceModeActive());
+}
+
+document.getElementById("menuExtraMaintenance")?.addEventListener("click",()=>{
+  menuModal.classList.remove("open");
+  openExtraMaintenance();
+});
+
 function updateSwapGoalMenuVisibility(){
   if(typeof menuSwapGoal==="undefined")return;
   const active=variedGoalModeActive();
   menuSwapGoal.classList.toggle("hidden",!active);
   document.getElementById("menuRelieveDeficit")?.classList.toggle("hidden",!active);
+  updateExtraMaintenanceMenuVisibility();
 }
 
 function weekDatesFor(date=new Date()){
