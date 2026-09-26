@@ -139,7 +139,8 @@ button,input,select,textarea{font:inherit}button{border:0;cursor:pointer}textare
 .titulo-topo{color:#fff;font-size:20px;font-weight:bold;display:flex;align-items:center;gap:8px;text-align:center}
 .page{display:none}.page.active{display:block}
 .date-row{display:flex;align-items:center;justify-content:space-between;color:#fff;margin:0 0 14px}.date-row button{width:44px;height:44px;border-radius:50%;background:#ffffff25;color:#fff;font-size:27px;margin:0;padding:0}.date-center{text-align:center}.date-center b{display:block;text-transform:capitalize}.date-center small{opacity:.9}
-.contadores{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:10px 0 18px}.contador{background:#fff;border-radius:16px;padding:15px 5px;text-align:center;box-shadow:0 4px 8px #0002}.contador span{display:block;font-size:23px;font-weight:bold;margin-bottom:5px}.contador small{font-size:12px;color:#777;font-weight:bold}.contador.consumed{color:var(--primary)}.contador.remaining{color:var(--green)}.contador.remaining.over{color:var(--red)}.contador.goal{color:var(--orange)}
+.contadores{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:10px 0 18px}
+#deficitReliefNotice{display:block;width:100%;margin-top:0;margin-bottom:18px;position:relative;order:initial}.contador{background:#fff;border-radius:16px;padding:15px 5px;text-align:center;box-shadow:0 4px 8px #0002}.contador span{display:block;font-size:23px;font-weight:bold;margin-bottom:5px}.contador small{font-size:12px;color:#777;font-weight:bold}.contador.consumed{color:var(--primary)}.contador.remaining{color:var(--green)}.contador.remaining.over{color:var(--red)}.contador.goal{color:var(--orange)}
 .card{background:#fff;border-radius:20px;padding:22px 18px;margin-bottom:18px;box-shadow:0 6px 12px #0002}.card h2,.card h3{color:#333}.section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}.section-title h2{font-size:21px}.section-title h3{font-size:19px}.muted{color:#777}.note{font-size:12px;color:#777;line-height:1.5}.empty{text-align:center;color:#999;padding:22px 8px;font-style:italic}
 .progress{height:13px;background:#e7e7ee;border-radius:20px;overflow:hidden}.progress>div{height:100%;width:0;background:linear-gradient(90deg,var(--primary),var(--primary2));border-radius:20px;transition:width .3s}.progress-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:9px}
 .macro-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:13px}.macro{background:#f5f6fb;border-radius:14px;padding:10px;text-align:center}.macro b{display:block;font-size:16px}.macro span{font-size:11px;color:#777}.macro .mini-progress{height:6px;background:#e2e4ed;border-radius:10px;margin-top:7px;overflow:hidden}.macro .mini-progress div{height:100%;background:var(--primary)}
@@ -5606,9 +5607,17 @@ function fillExtraMaintenanceTarget(){
     const item=effectiveDailyPlanItem(state.profile,d);
     const futureOrToday=d>=today;
     const originalMaintenance=d.getDay()===maintenanceDay;
-    if(!futureOrToday||originalMaintenance||item?.mode!=="deficit")return "";
-    if(reliefTransfersForWeek(d).some(t=>t.targetDate===localDateKey(d)))return "";
     const existing=extraMaintenanceForDate(d).length>0;
+
+    // Um dia que já recebeu manutenção extra precisa continuar aparecendo
+    // no seletor, mesmo depois de sua meta ter virado "maintenance",
+    // para que o usuário consiga selecionar e remover a manutenção.
+    if(!futureOrToday||originalMaintenance)return "";
+    if(!existing){
+      if(item?.mode!=="deficit")return "";
+      if(reliefTransfersForWeek(d).some(t=>t.targetDate===localDateKey(d)))return "";
+    }
+
     const day=d.toLocaleDateString("pt-BR",{weekday:"long"});
     const date=d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
     return `<option value="${localDateKey(d)}">${day} (${date})${existing?" — 🍽️ manutenção extra aplicada":""}</option>`;
