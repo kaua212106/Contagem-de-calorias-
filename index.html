@@ -6467,6 +6467,11 @@ function mcEnsureHomeKeys(){
 function mcApplyHomeOrder(){
   mcEnsureHomeKeys();const page=document.getElementById("todayPage");if(!page)return;
   state.settings.homeOrder.forEach(k=>{const el=page.querySelector(`:scope > [data-home-card="${k}"]`);if(el)page.appendChild(el)});
+  // O aviso de alívio/manutenção deve ficar SEMPRE imediatamente abaixo dos três contadores,
+  // independentemente da ordem personalizada dos cartões da tela inicial.
+  const counters=page.querySelector(":scope > .contadores[data-home-card=\"calories\"]");
+  const notice=page.querySelector(":scope > #deficitReliefNotice");
+  if(counters&&notice)counters.insertAdjacentElement("afterend",notice);
 }
 function mcRenderHomeOrderControls(){
   const host=document.getElementById("homeCardSettings");if(!host)return;
