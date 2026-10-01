@@ -1288,6 +1288,15 @@ body.dark .daily-cal-row{
   <p class="note">Use o saldo dos dias anteriores para aliviar um dia futuro. Quando houver kcal restantes, a meta de consumo do dia futuro <b>aumenta</b> e o déficit diminui. O planejamento padrão das próximas semanas não muda.</p>
   <label>Dia que você quer aliviar</label>
   <select id="reliefTargetDate"></select>
+  <label style="margin-top:10px">Quantidade de saldo</label>
+  <select id="reliefAmountMode">
+    <option value="all">Usar todo o saldo disponível</option>
+    <option value="partial">Escolher quanto usar</option>
+  </select>
+  <div id="reliefPartialAmountWrap" class="hidden" style="margin-top:10px">
+    <label for="reliefPartialAmount">Quantidade de kcal</label>
+    <input id="reliefPartialAmount" type="number" min="1" step="1" inputmode="numeric" placeholder="Ex.: 100">
+  </div>
   <div class="insight-note" id="reliefPreview" style="margin-top:10px"></div>
   <div class="actions">
     <button class="btn-neutral" data-close="relieveDeficitModal">Cancelar</button>
@@ -5494,12 +5503,18 @@ function updateDeficitReliefPreview(){
   const select=document.getElementById("reliefTargetDate");
   const box=document.getElementById("reliefPreview");
   const confirm=document.getElementById("confirmDeficitRelief");
+  const mode=document.getElementById("reliefAmountMode");
+  const partialInput=document.getElementById("reliefPartialAmount");
+  const partialWrap=document.getElementById("reliefPartialAmountWrap");
   if(!select||!box||!confirm)return;
+
+  if(partialWrap)partialWrap.classList.toggle("hidden",mode?.value!=="partial");
 
   const target=select.value?dateObj(select.value):null;
   if(!target){
     box.textContent="Não há um dia futuro com meta de déficit disponível.";
     confirm.disabled=true;
+    confirm.dataset.reliefAmount="0";
     updateRemoveDeficitReliefButton();
     return;
   }
@@ -5516,7 +5531,16 @@ function updateDeficitReliefPreview(){
   const currentDeficit=Math.max(0,Math.round(Number(item?.value)||0));
   const currentTarget=Math.max(0,Math.round(Number(goalForPlanItem(item))||0));
   const netBalance=Math.round(balances.reduce((s,x)=>s+x.balance,0));
-  const newDeficit=Math.max(0,currentDeficit-netBalance);
+
+  let adjustment=netBalance;
+  if(mode?.value==="partial"){
+    const requested=Math.max(0,Math.round(Number(partialInput?.value)||0));
+    if(netBalance>0) adjustment=Math.min(requested,netBalance);
+    else if(netBalance<0) adjustment=-Math.min(requested,Math.abs(netBalance));
+    else adjustment=0;
+  }
+
+  const newDeficit=Math.max(0,currentDeficit-adjustment);
   const newTarget=Math.max(0,Math.round((estimatePlanMaintenance(state.profile)||0)-newDeficit));
 
   if(!balances.length){
@@ -5537,11 +5561,13 @@ function updateDeficitReliefPreview(){
   }).join("");
 
   const targetName=target.toLocaleDateString("pt-BR",{weekday:"long"});
-  const adjustmentText=netBalance>0
-    ? `O alívio <b>aumentará a meta de consumo em ${fmt(netBalance)} kcal</b> e reduzirá o déficit desse dia.`
-    : netBalance<0
-      ? `A compensação <b>reduzirá a meta de consumo em ${fmt(Math.abs(netBalance))} kcal</b> para compensar o excesso anterior.`
-      : `Nenhum ajuste líquido disponível.`;
+  const adjustmentText=adjustment>0
+    ? `O alívio <b>aumentará a meta de consumo em ${fmt(adjustment)} kcal</b> e reduzirá o déficit desse dia.`
+    : adjustment<0
+      ? `A compensação <b>reduzirá a meta de consumo em ${fmt(Math.abs(adjustment))} kcal</b> para compensar o excesso anterior.`
+      : mode?.value==="partial"
+        ? `Informe uma quantidade válida para o alívio parcial.`
+        : `Nenhum ajuste líquido disponível.`;
 
   box.innerHTML=`
     <b>Saldo dos dias anteriores:</b><br>${lines}
@@ -5551,14 +5577,24 @@ function updateDeficitReliefPreview(){
     Nova meta de consumo: <b>${fmt(newTarget)} kcal</b><br>
     Novo déficit planejado: <b>${fmt(newDeficit)} kcal</b>
   `;
-  confirm.disabled=netBalance===0;
-  confirm.dataset.reliefAmount=String(netBalance);
+  confirm.disabled=adjustment===0;
+  confirm.dataset.reliefAmount=String(adjustment);
   updateRemoveDeficitReliefButton();
   if(existingTransfers.length){
     const totalApplied=existingTransfers.reduce((s,t)=>s+(Number(t.total)||0),0);
     box.innerHTML+=`<hr style="border:0;border-top:1px solid var(--border);margin:10px 0"><b>Alívio já aplicado neste dia:</b> ${fmt(Math.abs(totalApplied))} kcal.<br>Se remover, os saldos usados voltarão aos respectivos dias de origem.`;
   }
 }
+
+function updateDeficitReliefAmountMode(){
+  const mode=document.getElementById("reliefAmountMode");
+  const wrap=document.getElementById("reliefPartialAmountWrap");
+  if(wrap)wrap.classList.toggle("hidden",mode?.value!=="partial");
+  updateDeficitReliefPreview();
+}
+
+document.getElementById("reliefAmountMode")?.addEventListener("change",updateDeficitReliefAmountMode);
+document.getElementById("reliefPartialAmount")?.addEventListener("input",updateDeficitReliefPreview);
 
 document.getElementById("removeDeficitRelief")?.addEventListener("click",()=>{
   const select=document.getElementById("reliefTargetDate");
@@ -5718,6 +5754,8 @@ document.getElementById("reliefTargetDate")?.addEventListener("change",()=>{
 
 document.getElementById("confirmDeficitRelief")?.addEventListener("click",()=>{
   const targetEl=document.getElementById("reliefTargetDate");
+  const mode=document.getElementById("reliefAmountMode")?.value||"all";
+  const partialInput=document.getElementById("reliefPartialAmount");
   const adjustment=Number(document.getElementById("confirmDeficitRelief")?.dataset.reliefAmount)||0;
   if(!targetEl?.value||adjustment===0)return;
 
@@ -5728,8 +5766,6 @@ document.getElementById("confirmDeficitRelief")?.addEventListener("click",()=>{
   const item=effectiveDailyPlanItem(state.profile,target);
   if(item?.mode!=="deficit")return toast("O dia escolhido precisa ter uma meta de déficit.");
 
-  // Consome os saldos inteiros dos dias anteriores, inclusive saldos de sinais opostos.
-  // Assim, se houver +300 e -100, os dois são zerados e o alvo recebe +200.
   const balances=weekDatesFor(target)
     .filter(d=>d<today)
     .map(d=>({date:d,balance:availableDeficitBalance(d)}))
@@ -5739,23 +5775,50 @@ document.getElementById("confirmDeficitRelief")?.addEventListener("click",()=>{
   const netBalance=Math.round(balances.reduce((s,x)=>s+x.balance,0));
   if(netBalance===0)return toast("Não há saldo líquido disponível para esse ajuste.");
 
-  const sources=balances.map(x=>({
-    date:localDateKey(x.date),
-    amount:Math.round(x.balance)
-  }));
+  let requested=Math.abs(adjustment);
+  if(mode==="partial"){
+    const typed=Math.max(0,Math.round(Number(partialInput?.value)||0));
+    if(typed<=0)return toast("Informe quantas kcal você quer aliviar.");
+    if(typed>Math.abs(netBalance))return toast(`O máximo disponível para esse alívio é ${fmt(Math.abs(netBalance))} kcal.`);
+    requested=typed;
+  }
 
-  // O valor salvo em um item "deficit" é o TAMANHO do déficit, não a meta de consumo.
-  // +100 kcal de saldo = 100 kcal a menos de déficit = déficit planejado -100.
-  // -100 kcal de saldo = 100 kcal a mais de déficit = déficit planejado +100.
+  const sign=netBalance>0?1:-1;
+  const sources=[];
+  let remaining=requested;
+
+  // No alívio parcial, consome apenas o saldo necessário, começando pelo dia mais antigo.
+  // No alívio completo, mantém a lógica anterior: saldos positivos e negativos que se
+  // anulam também são zerados para que a contagem dos dias de origem fique correta.
+  if(mode==="partial"){
+    const candidates=balances.filter(x=>sign>0?x.balance>0:x.balance<0);
+    for(const x of candidates){
+      if(remaining<=0)break;
+      const used=Math.min(remaining,Math.abs(x.balance));
+      sources.push({date:localDateKey(x.date),amount:Math.round(sign*used)});
+      remaining-=used;
+    }
+  }else{
+    for(const x of balances){
+      sources.push({date:localDateKey(x.date),amount:Math.round(x.balance)});
+    }
+    remaining=0;
+    requested=Math.abs(netBalance);
+  }
+
+  const actualAmount=requested-remaining;
+  if(actualAmount<=0)return toast("Não há saldo suficiente para esse ajuste.");
+  const signedAmount=Math.round(sign*actualAmount);
+
   const currentDeficit=Math.max(0,Math.round(Number(item.value)||0));
-  const newDeficit=Math.max(0,currentDeficit-netBalance);
+  const newDeficit=Math.max(0,currentDeficit-signedAmount);
 
   state.deficitReliefTransfers=state.deficitReliefTransfers||[];
   state.deficitReliefTransfers.push({
     id:uid(),
     week:calorieWeekKey(target),
     targetDate:localDateKey(target),
-    total:netBalance,
+    total:signedAmount,
     previousDeficit:currentDeficit,
     sources,
     time:Date.now()
@@ -5767,9 +5830,9 @@ document.getElementById("confirmDeficitRelief")?.addEventListener("click",()=>{
   renderAll();
 
   const targetName=target.toLocaleDateString("pt-BR",{weekday:"long"});
-  toast(netBalance>0
-    ? `🩹 Alívio de ${fmt(netBalance)} kcal aplicado em ${targetName}.`
-    : `🩹 Compensação de ${fmt(Math.abs(netBalance))} kcal aplicada em ${targetName}.`);
+  toast(signedAmount>0
+    ? `🩹 Alívio de ${fmt(actualAmount)} kcal aplicado em ${targetName}.`
+    : `🩹 Compensação de ${fmt(Math.abs(actualAmount))} kcal aplicada em ${targetName}.`);
 });
 
 function updateExtraMaintenanceMenuVisibility(){
