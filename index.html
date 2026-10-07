@@ -4003,8 +4003,7 @@ function smartDashboardData(){
   items.push(rem>=0?{icon:"🔥",title:`${fmt(rem)} kcal restantes`,text:`Você consumiu ${fmt(t.k)} de ${fmt(goal)} kcal.`,kind:rem<goal*.15?"warn":"info"}:{icon:"⚠️",title:`${fmt(Math.abs(rem))} kcal acima da meta`,text:`Total do dia: ${fmt(t.k)} kcal.`,kind:"warn"});
   const pt=macroTarget("p");
   if(pt>0){const left=pt-t.p;items.push(left>0?{icon:"🥩",title:`Faltam ${fmt(left,1)} g de proteína`,text:`${fmt(t.p,1)} de ${fmt(pt)} g registrados.`,kind:left<pt*.15?"good":"info"}:{icon:"✓",title:"Meta de proteína atingida",text:`${fmt(t.p,1)} g registrados.`,kind:"good"})}
-  const wl=Math.max(0,waterGoal-water);
-  items.push(wl>0?{icon:"💧",title:`Faltam ${fmt(wl)} ml de água`,text:`${fmt(water)} de ${fmt(waterGoal)} ml registrados.`,kind:(new Date().getHours()>=18&&water<waterGoal*.6)?"warn":"info"}:{icon:"✓",title:"Meta de água atingida",text:`${fmt(water)} ml registrados.`,kind:"good"});
+  if(waterTrackingEnabled()){const wl=Math.max(0,waterGoal-water);items.push(wl>0?{icon:"💧",title:`Faltam ${fmt(wl)} ml de água`,text:`${fmt(water)} de ${fmt(waterGoal)} ml registrados.`,kind:(new Date().getHours()>=18&&water<waterGoal*.6)?"warn":"info"}:{icon:"✓",title:"Meta de água atingida",text:`${fmt(water)} ml registrados.`,kind:"good"});}
   const meals=state.mealNames.map(m=>({m,total:calcMealTotal(d.meals[m]||[]),target:mealTarget(m)})).filter(x=>x.target>0);
   const low=meals.find(x=>x.total===0);if(low)items.push({icon:"🍽️",title:`${low.m} ainda não foi registrado`,text:`Meta configurada: ${fmt(low.target)} kcal.`,kind:"info"});
   return items.slice(0,4)
