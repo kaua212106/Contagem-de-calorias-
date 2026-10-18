@@ -1246,6 +1246,7 @@ body.dark .daily-cal-row{
   <h2>Menu</h2>
   <button class="menu-item menu-profile" id="menuProfile">🎯 Perfil e metas</button>
   <button class="menu-item menu-swap hidden" id="menuSwapGoal">🔄 Trocar meta</button>
+  <button class="menu-item menu-swap hidden" id="menuCustomDeficit">🎯 Personalizar déficit</button>
   <button class="menu-item menu-relief hidden" id="menuRelieveDeficit">🩹 Aliviar déficit</button>
   <button class="menu-item menu-maintenance hidden" id="menuExtraMaintenance">🍽️ Manutenção extra</button>
   <button class="menu-item menu-report" id="menuGlobalSearch">🔎 Pesquisa global</button>
@@ -1280,7 +1281,21 @@ body.dark .daily-cal-row{
   </div>
 </div></div>
 
-
+<!-- PERSONALIZAR DÉFICIT -->
+<div class="modal" id="customDeficitModal"><div class="modal-box">
+  <div class="modal-title"><h2>🎯 Personalizar déficit</h2><button class="modal-close" data-close="customDeficitModal">×</button></div>
+  <p class="note">Defina um déficit específico para um dia desta semana. A meta de consumo será calculada usando suas calorias de manutenção. A alteração vale somente para esta semana.</p>
+  <label>Dia que deseja personalizar</label>
+  <select id="customDeficitDate"></select>
+  <label style="margin-top:10px">Déficit desejado (kcal)</label>
+  <input id="customDeficitAmount" type="number" min="0" max="1000" step="1" inputmode="numeric" placeholder="Ex.: 400">
+  <div class="insight-note" id="customDeficitPreview" style="margin-top:10px"></div>
+  <div class="actions">
+    <button class="btn-neutral" data-close="customDeficitModal">Cancelar</button>
+    <button class="btn-red hidden" id="removeCustomDeficit">Remover personalização</button>
+    <button class="btn-primary" id="confirmCustomDeficit">Salvar déficit</button>
+  </div>
+</div></div>
 
 <!-- ALIVIAR DÉFICIT -->
 <div class="modal" id="relieveDeficitModal"><div class="modal-box">
@@ -1794,7 +1809,7 @@ const BASE_FOODS=[
  {n:"Brócolis cozido",k:25,p:2.1,c:4.4,f:.4,fiber:3.3,sugar:1.4,sodium:33,chol:0,servingG:100,s:"Base brasileira"}
 ];
 const DEFAULT_MEALS=["Café da manhã","Almoço","Lanche","Jantar","Ceia"];
-const DEFAULT_STATE={version:15,profile:{sex:"male",age:null,weight:null,height:null,activity:1.2,objective:"maintain",calorieGoal:2000,targetWeight:null,weeklyDeficitKcal:0,maintenanceDay:0,calorieScheduleEnabled:false,caloriePlanMode:"fixed",dailyCaloriePlan:null,maintenanceReferenceKcal:null,weekdayPlanStartDate:null,historicalFixedCalorieGoal:null,waterGoalMl:2000,waterGoalMode:"auto",waterMlPerKg:35,macroTargets:{p:0,c:0,f:0},mealTargets:{},nutrientTargets:{}},settings:{dark:false,bg:"#667eea",tracked:["fiber","sugar","sodium","chol"],homeCards:{calories:true,progress:true,smart:true,quick:true,suggestions:true,streak:true,meals:true,notes:true},onboarded:false,fontScale:"normal",reduceMotion:false,waterEnabled:true},days:{},plans:{},shoppingList:[],trash:[],weights:[],recipes:[],customFoods:[],favorites:[],recentFoods:[],savedMeals:[],mealNames:[...DEFAULT_MEALS],reminders:[],waterContainers:[{id:"cup250",name:"Copo",ml:250},{id:"bottle500",name:"Garrafa",ml:500}],offCache:{},onlineProductCatalog:[],calorieWeekOverrides:{},calorieSwapReviews:{},deficitReliefTransfers:[],extraMaintenanceDays:[],autoBackups:[]};
+const DEFAULT_STATE={version:15,profile:{sex:"male",age:null,weight:null,height:null,activity:1.2,objective:"maintain",calorieGoal:2000,targetWeight:null,weeklyDeficitKcal:0,maintenanceDay:0,calorieScheduleEnabled:false,caloriePlanMode:"fixed",dailyCaloriePlan:null,maintenanceReferenceKcal:null,weekdayPlanStartDate:null,historicalFixedCalorieGoal:null,waterGoalMl:2000,waterGoalMode:"auto",waterMlPerKg:35,macroTargets:{p:0,c:0,f:0},mealTargets:{},nutrientTargets:{}},settings:{dark:false,bg:"#667eea",tracked:["fiber","sugar","sodium","chol"],homeCards:{calories:true,progress:true,smart:true,quick:true,suggestions:true,streak:true,meals:true,notes:true},onboarded:false,fontScale:"normal",reduceMotion:false,waterEnabled:true},days:{},plans:{},shoppingList:[],trash:[],weights:[],recipes:[],customFoods:[],favorites:[],recentFoods:[],savedMeals:[],mealNames:[...DEFAULT_MEALS],reminders:[],waterContainers:[{id:"cup250",name:"Copo",ml:250},{id:"bottle500",name:"Garrafa",ml:500}],offCache:{},onlineProductCatalog:[],calorieWeekOverrides:{},calorieSwapReviews:{},deficitReliefTransfers:[],extraMaintenanceDays:[],customDeficitDays:[],autoBackups:[]};
 function deepMerge(base,src){if(Array.isArray(base))return Array.isArray(src)?src:base;if(typeof base!=="object"||base===null)return src??base;const out={...base};if(src&&typeof src==="object")Object.keys(src).forEach(k=>out[k]=k in base?deepMerge(base[k],src[k]):src[k]);return out}
 function migrateOldState(){if(localStorage.getItem("minhasCaloriasCompleto"))return null;try{const old=JSON.parse(localStorage.getItem("caloriasApp")||"null");if(!old)return null;const n=clone(DEFAULT_STATE);n.profile.calorieGoal=Number(old.goal)||2000;n.profile={...n.profile,...(old.profile||{}),calorieGoal:Number(old.goal)||2000,macroTargets:old.macroTargets||n.profile.macroTargets,waterGoalMl:(Number(old.waterGoalCups)||8)*250};n.settings.dark=!!old.dark;n.days={};Object.entries(old.days||{}).forEach(([k,d])=>{n.days[k]={meals:{},water:[],note:"",mealPhotos:{}};n.mealNames.forEach(m=>n.days[k].meals[m]=clone(d[m]||[]).map(x=>({...x,id:x.id||uid(),fiber:x.fiber||0,sugar:x.sugar||0,sodium:x.sodium||0,chol:x.chol||0}))) });Object.entries(old.water||{}).forEach(([k,count])=>{n.days[k]=n.days[k]||{meals:{},water:[],note:"",mealPhotos:{}};n.mealNames.forEach(m=>n.days[k].meals[m]=n.days[k].meals[m]||[]);if(Number(count)>0)n.days[k].water=[{ml:Number(count)*250,time:"importado"}]});n.weights=clone(old.weights||[]);n.savedMeals=clone(old.savedMeals||[]);return n}catch(e){return null}}
 function upgradeState(s){
@@ -5869,6 +5884,7 @@ function updateSwapGoalMenuVisibility(){
   if(typeof menuSwapGoal==="undefined")return;
   const active=variedGoalModeActive();
   menuSwapGoal.classList.toggle("hidden",!active);
+  document.getElementById("menuCustomDeficit")?.classList.toggle("hidden",!active);
   document.getElementById("menuRelieveDeficit")?.classList.toggle("hidden",!active);
   updateExtraMaintenanceMenuVisibility();
 }
@@ -5940,6 +5956,87 @@ function updateManualGoalSwapPreview(){
   `;
 }
 
+function customDeficitEntriesForWeek(date=new Date()){
+  const wk=calorieWeekKey(date);
+  return Array.isArray(state.customDeficitDays)?state.customDeficitDays.filter(x=>x?.week===wk):[];
+}
+function customDeficitForDate(date){
+  const key=localDateKey(date);
+  return customDeficitEntriesForWeek(date).find(x=>x.date===key)||null;
+}
+function fillCustomDeficitSelect(){
+  const select=document.getElementById("customDeficitDate");
+  if(!select)return;
+  const dates=weekDatesFor(new Date());
+  select.innerHTML=dates.map(d=>{
+    const key=localDateKey(d),item=effectiveDailyPlanItem(state.profile,d);
+    const existing=customDeficitForDate(d);
+    const hasRelief=reliefTransfersForWeek(d).some(t=>t.targetDate===key);
+    const hasMaintenance=extraMaintenanceForDate(d).length>0;
+    if(!existing&&(item?.mode!=="deficit"||hasRelief||hasMaintenance))return "";
+    const day=d.toLocaleDateString("pt-BR",{weekday:"long"});
+    const dateText=d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
+    return `<option value="${key}">${day} (${dateText})${existing?" — 🎯 personalizado":""}</option>`;
+  }).filter(Boolean).join("")||'<option value="">Nenhum dia disponível</option>';
+  updateCustomDeficitPreview();
+}
+function updateCustomDeficitPreview(){
+  const select=document.getElementById("customDeficitDate"),input=document.getElementById("customDeficitAmount");
+  const preview=document.getElementById("customDeficitPreview"),saveBtn=document.getElementById("confirmCustomDeficit"),removeBtn=document.getElementById("removeCustomDeficit");
+  if(!select||!input||!preview||!saveBtn||!removeBtn)return;
+  const target=select.value?dateObj(select.value):null;
+  const existing=target?customDeficitForDate(target):null;
+  removeBtn.classList.toggle("hidden",!existing);
+  if(!target){preview.textContent="Não há dias disponíveis para personalização.";saveBtn.disabled=true;return;}
+  if(existing&&input.dataset.loadedFor!==select.value){input.value=String(existing.deficit);input.dataset.loadedFor=select.value;}
+  if(!existing&&input.dataset.loadedFor!==select.value){input.value="";input.dataset.loadedFor=select.value;}
+  const maintenance=estimatePlanMaintenance(state.profile);
+  const raw=input.value.trim();
+  const deficit=Number(raw);
+  if(!(maintenance>0)){preview.innerHTML="Configure primeiro suas <b>calorias de manutenção</b> no perfil para calcular a meta de consumo.";saveBtn.disabled=true;return;}
+  if(raw===""||!Number.isFinite(deficit)||deficit<0||deficit>1000){preview.innerHTML="Informe um déficit entre <b>0 e 1000 kcal</b>.";saveBtn.disabled=true;return;}
+  const goal=Math.max(1200,Math.round(maintenance-deficit));
+  const effectiveDeficit=Math.max(0,Math.round(maintenance-goal));
+  preview.innerHTML=`Manutenção de referência: <b>${fmt(Math.round(maintenance))} kcal</b><br>Déficit informado: <b>${fmt(deficit)} kcal</b><br>Meta de consumo calculada: <b>${fmt(goal)} kcal/dia</b>${effectiveDeficit!==deficit?`<br><small>Com o limite mínimo de consumo de 1200 kcal, o déficit efetivo será ${fmt(effectiveDeficit)} kcal.</small>`:""}<br><small>Somente este dia será alterado nesta semana.</small>`;
+  saveBtn.disabled=false;
+}
+function openCustomDeficit(){
+  if(!variedGoalModeActive())return toast("A personalização só está disponível no modo Variado por dia.");
+  fillCustomDeficitSelect();
+  openModal("customDeficitModal");
+}
+document.getElementById("customDeficitDate")?.addEventListener("change",()=>{const input=document.getElementById("customDeficitAmount");if(input)input.dataset.loadedFor="";updateCustomDeficitPreview();});
+document.getElementById("customDeficitAmount")?.addEventListener("input",updateCustomDeficitPreview);
+document.getElementById("confirmCustomDeficit")?.addEventListener("click",()=>{
+  const select=document.getElementById("customDeficitDate"),input=document.getElementById("customDeficitAmount");
+  if(!select?.value||!input)return;
+  const target=dateObj(select.value),key=localDateKey(target),deficit=Number(input.value);
+  const maintenance=estimatePlanMaintenance(state.profile);
+  if(!(maintenance>0))return toast("Configure suas calorias de manutenção no perfil primeiro.");
+  if(!Number.isFinite(deficit)||deficit<0||deficit>1000)return toast("Informe um déficit entre 0 e 1000 kcal.");
+  if(reliefTransfersForWeek(target).some(t=>t.targetDate===key)||extraMaintenanceForDate(target).length)return toast("Remova primeiro o alívio ou a manutenção extra desse dia.");
+  const existing=customDeficitForDate(target);
+  if(!existing){
+    const item=effectiveDailyPlanItem(state.profile,target);
+    if(item?.mode!=="deficit")return toast("Escolha um dia que tenha meta de déficit.");
+    state.customDeficitDays=Array.isArray(state.customDeficitDays)?state.customDeficitDays:[];
+    state.customDeficitDays.push({id:uid(),week:calorieWeekKey(target),date:key,previousMode:item.mode,previousValue:Number(item.value)||0,time:Date.now()});
+  }
+  saveWeekPlanItem(target,{mode:"deficit",value:Math.round(deficit)});
+  save();closeModal("customDeficitModal");renderAll();
+  toast(`🎯 Déficit de ${fmt(Math.round(deficit))} kcal definido para ${target.toLocaleDateString("pt-BR",{weekday:"long"})}.`);
+});
+document.getElementById("removeCustomDeficit")?.addEventListener("click",()=>{
+  const select=document.getElementById("customDeficitDate");if(!select?.value)return;
+  const target=dateObj(select.value),key=localDateKey(target),entry=customDeficitForDate(target);
+  if(!entry)return;
+  if(reliefTransfersForWeek(target).some(t=>t.targetDate===key)||extraMaintenanceForDate(target).length)return toast("Remova primeiro o alívio ou a manutenção extra desse dia.");
+  state.customDeficitDays=(state.customDeficitDays||[]).filter(x=>!(x.week===entry.week&&x.date===entry.date));
+  saveWeekPlanItem(target,{mode:entry.previousMode||"deficit",value:Number(entry.previousValue)||0});
+  save();closeModal("customDeficitModal");renderAll();
+  toast(`Personalização removida de ${target.toLocaleDateString("pt-BR",{weekday:"long"})}; meta anterior restaurada.`);
+});
+
 function openManualGoalSwap(){
   if(!variedGoalModeActive())return toast("A troca de metas só está disponível no modo Variado por dia.");
   fillSwapGoalSelects();
@@ -5966,6 +6063,10 @@ menuSwapGoal.onclick=()=>{
   menuModal.classList.remove("open");
   openManualGoalSwap();
 };
+document.getElementById("menuCustomDeficit")?.addEventListener("click",()=>{
+  menuModal.classList.remove("open");
+  openCustomDeficit();
+});
 document.getElementById("menuRelieveDeficit")?.addEventListener("click",()=>{
   menuModal.classList.remove("open");
   openDeficitRelief();
