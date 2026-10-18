@@ -5972,11 +5972,13 @@ function fillCustomDeficitSelect(){
     const key=localDateKey(d),item=effectiveDailyPlanItem(state.profile,d);
     const existing=customDeficitForDate(d);
     const hasRelief=reliefTransfersForWeek(d).some(t=>t.targetDate===key);
-    const hasMaintenance=extraMaintenanceForDate(d).length>0;
-    if(!existing&&(item?.mode!=="deficit"||hasRelief||hasMaintenance))return "";
+    const hasExtraMaintenance=extraMaintenanceForDate(d).length>0;
+    const isRegularMaintenanceDay=d.getDay()===(Number(state.profile.maintenanceDay)||0);
+    // Inclui o dia normal de manutenção para permitir compensar um déficit semanal que faltou.
+    if(!existing&&((item?.mode!=="deficit"&&!isRegularMaintenanceDay)||hasRelief||hasExtraMaintenance))return "";
     const day=d.toLocaleDateString("pt-BR",{weekday:"long"});
     const dateText=d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
-    return `<option value="${key}">${day} (${dateText})${existing?" — 🎯 personalizado":""}</option>`;
+    return `<option value="${key}">${day} (${dateText})${existing?" — 🎯 personalizado":isRegularMaintenanceDay?" — 🍽️ dia de manutenção":""}</option>`;
   }).filter(Boolean).join("")||'<option value="">Nenhum dia disponível</option>';
   updateCustomDeficitPreview();
 }
@@ -5997,7 +5999,8 @@ function updateCustomDeficitPreview(){
   if(raw===""||!Number.isFinite(deficit)||deficit<0||deficit>1000){preview.innerHTML="Informe um déficit entre <b>0 e 1000 kcal</b>.";saveBtn.disabled=true;return;}
   const goal=Math.max(1200,Math.round(maintenance-deficit));
   const effectiveDeficit=Math.max(0,Math.round(maintenance-goal));
-  preview.innerHTML=`Manutenção de referência: <b>${fmt(Math.round(maintenance))} kcal</b><br>Déficit informado: <b>${fmt(deficit)} kcal</b><br>Meta de consumo calculada: <b>${fmt(goal)} kcal/dia</b>${effectiveDeficit!==deficit?`<br><small>Com o limite mínimo de consumo de 1200 kcal, o déficit efetivo será ${fmt(effectiveDeficit)} kcal.</small>`:""}<br><small>Somente este dia será alterado nesta semana.</small>`;
+  const isRegularMaintenanceDay=target.getDay()===(Number(state.profile.maintenanceDay)||0);
+  preview.innerHTML=`Manutenção de referência: <b>${fmt(Math.round(maintenance))} kcal</b><br>Déficit informado: <b>${fmt(deficit)} kcal</b><br>Meta de consumo calculada: <b>${fmt(goal)} kcal/dia</b>${effectiveDeficit!==deficit?`<br><small>Com o limite mínimo de consumo de 1200 kcal, o déficit efetivo será ${fmt(effectiveDeficit)} kcal.</small>`:""}<br><small>${isRegularMaintenanceDay?"Este é o dia de manutenção: ao salvar, ele passará a ter o déficit informado nesta semana.":"Somente este dia será alterado nesta semana."}</small>`;
   saveBtn.disabled=false;
 }
 function openCustomDeficit(){
@@ -6018,7 +6021,8 @@ document.getElementById("confirmCustomDeficit")?.addEventListener("click",()=>{
   const existing=customDeficitForDate(target);
   if(!existing){
     const item=effectiveDailyPlanItem(state.profile,target);
-    if(item?.mode!=="deficit")return toast("Escolha um dia que tenha meta de déficit.");
+    const isRegularMaintenanceDay=target.getDay()===(Number(state.profile.maintenanceDay)||0);
+    if(item?.mode!=="deficit"&&!isRegularMaintenanceDay)return toast("Escolha um dia com meta de déficit ou o dia normal de manutenção.");
     state.customDeficitDays=Array.isArray(state.customDeficitDays)?state.customDeficitDays:[];
     state.customDeficitDays.push({id:uid(),week:calorieWeekKey(target),date:key,previousMode:item.mode,previousValue:Number(item.value)||0,time:Date.now()});
   }
