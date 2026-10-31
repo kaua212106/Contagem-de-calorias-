@@ -1674,7 +1674,7 @@ body.dark .daily-cal-row{
 <!-- PESQUISA GLOBAL -->
 <div class="modal" id="globalSearchModal"><div class="modal-box">
   <div class="modal-title"><h2>🔎 Pesquisa global</h2><button class="modal-close" data-close="globalSearchModal">×</button></div>
-  <input id="globalSearchInput" placeholder="Alimento, receita ou refeição salva...">
+  <input id="globalSearchInput" placeholder="Pesquise qualquer alimento, registro ou receita...">
   <div id="globalSearchResults" class="results"></div>
 </div></div>
 
@@ -4067,8 +4067,50 @@ function renderQuickDayComparison(){const el=document.getElementById("quickDayCo
 
 // ---------- Pesquisa global ----------
 function highlightText(s,q){const e=esc(s),n=normSearch(q);if(!n)return e;return e}
-function globalResults(q){q=normSearch(q);if(!q)return [];const out=[];searchLocal(q).slice(0,8).forEach(f=>out.push({type:"food",title:f.n,sub:`${fmt(f.k)} kcal/100g`,data:f}));state.recipes.forEach((r,i)=>{if(normSearch(r.name).includes(q))out.push({type:"recipe",title:r.name,sub:`${fmt(r.per?.k)} kcal/porção`,i})});state.savedMeals.forEach((m,i)=>{if(normSearch(m.name).includes(q)||(m.items||[]).some(x=>normSearch(x.name).includes(q)))out.push({type:"meal",title:m.name,sub:`${m.items.length} itens • ${fmt(calcMealTotal(m.items))} kcal`,i})});return out.slice(0,20)}
-function renderGlobalSearch(){const q=globalSearchInput.value,r=globalResults(q);globalSearchResults.innerHTML=q?(r.length?r.map((x,i)=>`<div class="global-result"><div><b>${esc(x.title)}</b><small>${esc(x.sub)}</small></div><button class="chip" data-global-result="${i}">${x.type==="food"?"Adicionar":x.type==="recipe"?"Abrir receita":"Usar"}</button></div>`).join(""):'<div class="empty">Nada encontrado.</div>'):'<div class="empty">Digite para procurar em alimentos, receitas e combos.</div>';globalSearchResults.querySelectorAll("[data-global-result]").forEach(b=>b.onclick=()=>{const x=r[Number(b.dataset.globalResult)];closeModal("globalSearchModal");if(x.type==="food"){openFood();selectFood(x.data)}else if(x.type==="recipe"){switchPage("recipesPage");setTimeout(()=>editRecipe(x.i),80)}else useSavedMeal(x.i)})}
+function globalMatchScore(value,q){
+  const name=normSearch(value);if(!name)return 999;
+  if(name===q)return 0;if(name.startsWith(q))return 1;if(name.includes(q))return 2;
+  const queryWords=q.split(/\\s+/).filter(Boolean),nameWords=name.split(/\\s+/).filter(Boolean);
+  let total=0;
+  for(const qw of queryWords){
+    if(nameWords.some(w=>w.startsWith(qw)))total+=2;
+    else if(nameWords.some(w=>w.includes(qw)))total+=3;
+    else {const d=Math.min(...nameWords.map(w=>levenshtein(w,qw)));if(d<=Math.max(1,Math.floor(qw.length/3)))total+=5+d;else return 999}
+  }
+  return 4+total;
+}
+function globalResults(query){
+  const q=normSearch(query);if(!q)return [];
+  const out=[],add=(item,score)=>{if(score<999)out.push({...item,_score:score})};
+  searchLocal(q).forEach(f=>add({type:"food",title:f.n,sub:`${fmt(f.k)} kcal/100g • Alimento`,data:f},globalMatchScore(f.n,q)));
+  state.recipes.forEach((r,i)=>{
+    const score=Math.min(globalMatchScore(r.name,q),...(r.ingredients||[]).map(x=>globalMatchScore(x.name||x,q)));
+    add({type:"recipe",title:r.name,sub:`${fmt(r.per?.k)} kcal/porção • Receita`,i},score);
+  });
+  state.savedMeals.forEach((m,i)=>{
+    const score=Math.min(globalMatchScore(m.name,q),...(m.items||[]).map(x=>globalMatchScore(x.name,q)));
+    add({type:"meal",title:m.name,sub:`${(m.items||[]).length} itens • ${fmt(calcMealTotal(m.items||[]))} kcal • Refeição salva`,i},score);
+  });
+  const seenLogs=new Set();
+  Object.entries(state.days||{}).forEach(([date,day])=>Object.entries(day.meals||{}).forEach(([meal,items])=>(items||[]).forEach(item=>{
+    const score=globalMatchScore(item.name,q);if(score>=999)return;
+    const key=normSearch(item.name)+"|"+date+"|"+meal;
+    if(seenLogs.has(key))return;seenLogs.add(key);
+    add({type:"logged",title:item.name,sub:`${meal} • ${dateObj(date).toLocaleDateString("pt-BR")} • ${fmt(item.k)} kcal registradas`,date},score+1);
+  })));
+  return out.sort((a,b)=>a._score-b._score||a.title.localeCompare(b.title,"pt-BR")).slice(0,40);
+}
+function renderGlobalSearch(){
+  const q=globalSearchInput.value,r=globalResults(q);
+  globalSearchResults.innerHTML=q.trim()?(r.length?r.map((x,i)=>`<div class="global-result"><div><b>${esc(x.title)}</b><small>${esc(x.sub)}</small></div><button class="chip" data-global-result="${i}">${x.type==="food"?"Adicionar":x.type==="recipe"?"Abrir receita":x.type==="logged"?"Ver dia":"Usar"}</button></div>`).join(""):'<div class="empty">Nada encontrado. Tente outra parte do nome.</div>'):'<div class="empty">Pesquise alimentos, registros do diário, receitas, refeições salvas, favoritos e alimentos personalizados.</div>';
+  globalSearchResults.querySelectorAll("[data-global-result]").forEach(b=>b.onclick=()=>{
+    const x=r[Number(b.dataset.globalResult)];closeModal("globalSearchModal");
+    if(x.type==="food"){openFood();selectFood(x.data)}
+    else if(x.type==="recipe"){switchPage("recipesPage");setTimeout(()=>editRecipe(x.i),80)}
+    else if(x.type==="logged"){selectedDate=dateObj(x.date);switchPage("todayPage");renderAll()}
+    else useSavedMeal(x.i);
+  });
+}
 menuGlobalSearch.onclick=()=>{menuModal.classList.remove("open");globalSearchInput.value="";renderGlobalSearch();openModal("globalSearchModal");setTimeout(()=>globalSearchInput.focus(),100)};
 globalSearchInput.oninput=renderGlobalSearch;
 
